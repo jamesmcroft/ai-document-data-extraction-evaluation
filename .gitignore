@@ -403,3 +403,4 @@ local.settings.json
 # App Specific
 *Outputs.json
 *.env
+appsettings*.json
