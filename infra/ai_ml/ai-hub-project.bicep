@@ -7,6 +7,8 @@ param tags object = {}
 
 @description('Name for the AI Hub resource associated with the AI Hub project.')
 param aiHubName string
+@description('ID for the Managed Identity associated with the AI Hub project. Defaults to the system-assigned identity.')
+param identityId string?
 
 resource aiHub 'Microsoft.MachineLearningServices/workspaces@2024-04-01-preview' existing = {
   name: aiHubName
@@ -18,7 +20,12 @@ resource aiHubProject 'Microsoft.MachineLearningServices/workspaces@2024-04-01-p
   tags: tags
   kind: 'Project'
   identity: {
-    type: 'SystemAssigned'
+    type: identityId == null ? 'SystemAssigned' : 'UserAssigned'
+    userAssignedIdentities: identityId == null
+      ? null
+      : {
+          '${identityId}': {}
+        }
   }
   sku: {
     name: 'Basic'

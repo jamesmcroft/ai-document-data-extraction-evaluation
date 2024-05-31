@@ -70,4 +70,4 @@ output id string = aiHub.id
 @description('Name for the deployed AI Hub resource.')
 output name string = aiHub.name
 @description('Identity principal ID for the deployed AI Hub resource.')
-output identityPrincipalId string? = identityId ?? aiHub.identity.principalId
+output identityPrincipalId string? = identityId == null ? aiHub.identity.principalId : identityId

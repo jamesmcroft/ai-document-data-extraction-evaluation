@@ -45,6 +45,16 @@ resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   tags: union(tags, {})
 }
 
+module managedIdentity './security/managed-identity.bicep' = {
+  name: '${abbrs.security.managedIdentity}${resourceToken}'
+  scope: resourceGroup
+  params: {
+    name: '${abbrs.security.managedIdentity}${resourceToken}'
+    location: location
+    tags: union(tags, {})
+  }
+}
+
 resource contributor 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
   scope: resourceGroup
   name: roles.general.contributor
@@ -59,6 +69,11 @@ module resouceGroupRoleAssignment './security/resource-group-role-assignment.bic
         principalId: userPrincipalId
         roleDefinitionId: contributor.id
         principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: contributor.id
+        principalType: 'ServicePrincipal'
       }
     ]
   }
@@ -81,6 +96,11 @@ module documentIntelligence './ai_ml/document-intelligence.bicep' = {
         principalId: userPrincipalId
         roleDefinitionId: cognitiveServicesUser.id
         principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: cognitiveServicesUser.id
+        principalType: 'ServicePrincipal'
       }
     ]
   }
@@ -112,6 +132,11 @@ module storageAccount './storage/storage-account.bicep' = {
         roleDefinitionId: storageBlobDataContributor.id
         principalType: 'ServicePrincipal'
       }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: storageBlobDataContributor.id
+        principalType: 'ServicePrincipal'
+      }
     ]
   }
 }
@@ -133,6 +158,11 @@ module keyVault './security/key-vault.bicep' = {
         principalId: userPrincipalId
         roleDefinitionId: keyVaultAdministrator.id
         principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: keyVaultAdministrator.id
+        principalType: 'ServicePrincipal'
       }
     ]
   }
@@ -191,6 +221,16 @@ module containerRegistry './containers/container-registry.bicep' = {
         roleDefinitionId: acrPull.id
         principalType: 'User'
       }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: acrPush.id
+        principalType: 'ServicePrincipal'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: acrPull.id
+        principalType: 'ServicePrincipal'
+      }
     ]
   }
 }
@@ -221,7 +261,7 @@ module primaryAIServices './ai_ml/ai-services.bicep' = {
         }
         sku: {
           name: 'Standard'
-          capacity: 30
+          capacity: 10
         }
       }
       {
@@ -233,7 +273,7 @@ module primaryAIServices './ai_ml/ai-services.bicep' = {
         }
         sku: {
           name: 'Standard'
-          capacity: 30
+          capacity: 10
         }
       }
     ]
@@ -242,6 +282,11 @@ module primaryAIServices './ai_ml/ai-services.bicep' = {
         principalId: userPrincipalId
         roleDefinitionId: cognitiveServicesOpenAIContributor.id
         principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: cognitiveServicesOpenAIContributor.id
+        principalType: 'ServicePrincipal'
       }
     ]
   }
@@ -264,7 +309,7 @@ module secondaryAIServices './ai_ml/ai-services.bicep' = {
         }
         sku: {
           name: 'Standard'
-          capacity: 20
+          capacity: 10
         }
       }
     ]
@@ -273,6 +318,11 @@ module secondaryAIServices './ai_ml/ai-services.bicep' = {
         principalId: userPrincipalId
         roleDefinitionId: cognitiveServicesOpenAIContributor.id
         principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: cognitiveServicesOpenAIContributor.id
+        principalType: 'ServicePrincipal'
       }
     ]
   }
@@ -285,6 +335,7 @@ module aiHub './ai_ml/ai-hub.bicep' = {
     name: '${abbrs.ai.aiHub}${resourceToken}'
     location: location
     tags: union(tags, {})
+    identityId: managedIdentity.outputs.id
     storageAccountId: storageAccount.outputs.id
     keyVaultId: keyVault.outputs.id
     applicationInsightsId: applicationInsights.outputs.id
