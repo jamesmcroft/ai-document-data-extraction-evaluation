@@ -1,9 +1,11 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Text.Json;
 using Azure.AI.DocumentIntelligence;
 using Azure.AI.OpenAI;
 using Azure.Identity;
 using EvaluationTests.Shared.Extraction;
+using EvaluationTests.Shared.Extraction.AzureML;
+using EvaluationTests.Shared.Extraction.AzureOpenAI;
 using EvaluationTests.Shared.Markdown;
 using Microsoft.Extensions.Configuration;
 
@@ -66,6 +68,29 @@ public abstract class ExtractionTests<T>
                         openAIClient,
                         openAIOptions);
                 break;
+            case EndpointType.AzureMLServerless:
+                var azureMLClient =
+                    new AzureMLServerlessClient(new Uri(endpointSettings.Endpoint), endpointSettings.ApiKey!);
+                var azureMLOptions = new AzureMLServerlessChatCompletionOptions
+                {
+                    Messages =
+                    [
+                        new("user", extractionTest.ModelConfig.SystemPrompt),
+                        new("user", extractionTest.ModelConfig.ExtractionPrompt)
+                    ],
+                    Temperature = extractionTest.ModelConfig.Temperature,
+                    NucleusSamplingFactor = extractionTest.ModelConfig.TopP,
+                    MaxTokens = 1024
+                };
+
+                dataExtractor = extractionTest.AsMarkdown
+                    ? new AzureMLServerlessMarkdownDocumentDataExtractor(
+                        azureMLClient,
+                        azureMLOptions,
+                        markdownConverter!)
+                    : throw new NotImplementedException(
+                        "Non-markdown AzureMLServerless data extractor is not implemented.");
+                break;
             default:
                 throw new InvalidOperationException("Invalid endpoint type.");
         }
@@ -73,7 +98,7 @@ public abstract class ExtractionTests<T>
         return dataExtractor;
     }
 
-    public async Task SaveExtractionDataAsync(string name, DataExtractionResult result)
+    public async Task SaveExtractionDataAsync(string name, ExtractionTestCaseResult result)
     {
         if (!Directory.Exists("Output"))
         {
@@ -93,6 +118,10 @@ public abstract class ExtractionTests<T>
         byte[] FileBytes,
         bool AsMarkdown,
         T ExpectedData);
+
+    public record ExtractionTestCaseResult(
+        DataExtractionResult Result,
+        string ExecutionTime);
 
     public record ExtractionTestCaseModelConfig(
         string SystemPrompt,

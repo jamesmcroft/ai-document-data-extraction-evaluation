@@ -1,14 +1,13 @@
 using System.Text;
-using Azure.AI.OpenAI;
 using EvaluationTests.Shared.Markdown;
 
-namespace EvaluationTests.Shared.Extraction;
+namespace EvaluationTests.Shared.Extraction.AzureML;
 
-public class AzureOpenAIMarkdownDocumentDataExtractor(
-    OpenAIClient client,
-    ChatCompletionsOptions chatCompletionOptions,
+public class AzureMLServerlessMarkdownDocumentDataExtractor(
+    AzureMLServerlessClient client,
+    AzureMLServerlessChatCompletionOptions chatCompletionOptions,
     IDocumentMarkdownConverter markdownConverter)
-    : AzureOpenAIDocumentDataExtractor(client, chatCompletionOptions)
+    : AzureMLServerlessDocumentDataExtractor(client, chatCompletionOptions)
 {
     public override async Task<DataExtractionResult> FromDocumentBytesAsync(
         byte[] documentBytes,
@@ -22,6 +21,7 @@ public class AzureOpenAIMarkdownDocumentDataExtractor(
             return result;
         }
 
-        return await GetChatCompletionsAsync(new ChatRequestUserMessage(Encoding.UTF8.GetString(markdownContent)));
+        return await GetChatCompletionsAsync(
+            new AzureMLServerlessChatRequestMessage("user", Encoding.UTF8.GetString(markdownContent)));
     }
 }

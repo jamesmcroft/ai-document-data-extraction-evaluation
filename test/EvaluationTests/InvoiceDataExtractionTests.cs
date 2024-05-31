@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using EvaluationTests.Assets.Invoices;
 using EvaluationTests.Shared;
@@ -28,7 +29,9 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
         // Assert
         stopwatch.Stop();
 
-        await SaveExtractionDataAsync($"{test.Name}-{test.EndpointSettingKey}-{test.AsMarkdown}", result);
+        await SaveExtractionDataAsync(
+            $"{test.Name}-{test.EndpointSettingKey}-{test.AsMarkdown}",
+            new ExtractionTestCaseResult(result, stopwatch.Elapsed.ToString("g", CultureInfo.InvariantCulture)));
 
         await TestContext.Out.WriteLineAsync($"Prompt Tokens: {result.PromptTokens}");
         await TestContext.Out.WriteLineAsync($"Completion Tokens: {result.CompletionTokens}");
@@ -276,6 +279,18 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
                     0.1f),
                 fileBytes,
                 false,
+                expectedOutput),
+            new ExtractionTestCase(
+                testName,
+                EndpointType.AzureMLServerless,
+                "Phi3Mini128kInstruct",
+                new ExtractionTestCaseModelConfig(
+                    systemPrompt,
+                    extractPrompt,
+                    0.1f,
+                    0.1f),
+                fileBytes,
+                true,
                 expectedOutput)
         ];
     }
@@ -412,6 +427,18 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
                     0.1f),
                 fileBytes,
                 false,
+                expectedOutput),
+            new ExtractionTestCase(
+                testName,
+                EndpointType.AzureMLServerless,
+                "Phi3Mini128kInstruct",
+                new ExtractionTestCaseModelConfig(
+                    systemPrompt,
+                    extractPrompt,
+                    0.1f,
+                    0.1f),
+                fileBytes,
+                true,
                 expectedOutput)
         ];
     }

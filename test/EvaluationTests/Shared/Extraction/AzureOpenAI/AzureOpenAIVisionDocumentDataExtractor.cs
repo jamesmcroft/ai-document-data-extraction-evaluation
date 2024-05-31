@@ -1,7 +1,7 @@
 using Azure.AI.OpenAI;
 using SkiaSharp;
 
-namespace EvaluationTests.Shared.Extraction;
+namespace EvaluationTests.Shared.Extraction.AzureOpenAI;
 
 public class AzureOpenAIVisionDocumentDataExtractor(
     OpenAIClient client,

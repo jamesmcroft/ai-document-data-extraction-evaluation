@@ -1,6 +1,6 @@
 using Azure.AI.OpenAI;
 
-namespace EvaluationTests.Shared.Extraction;
+namespace EvaluationTests.Shared.Extraction.AzureOpenAI;
 
 public abstract class AzureOpenAIDocumentDataExtractor(
     OpenAIClient client,
