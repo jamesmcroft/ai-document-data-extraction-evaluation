@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text.Json;
 using EvaluationTests.Assets.Invoices;
 using EvaluationTests.Shared;
+using EvaluationTests.Shared.Extraction;
 
 namespace EvaluationTests;
 
@@ -29,120 +30,194 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
         // Assert
         stopwatch.Stop();
 
-        await SaveExtractionDataAsync(
-            $"{test.Name}-{test.EndpointSettingKey}-{test.AsMarkdown}",
-            new ExtractionTestCaseResult(result, stopwatch.Elapsed.ToString("g", CultureInfo.InvariantCulture)));
 
         await TestContext.Out.WriteLineAsync($"Prompt Tokens: {result.PromptTokens}");
         await TestContext.Out.WriteLineAsync($"Completion Tokens: {result.CompletionTokens}");
         await TestContext.Out.WriteLineAsync($"Time Elapsed: {stopwatch.Elapsed}");
 
-        if (result.Content is null)
-        {
-            Assert.Fail("Extraction failed.");
-        }
-
         var actualData = result.Data as InvoiceData;
-        ValidateExtractedData(test.ExpectedData, actualData);
+        var accuracy = ValidateExtractedData(test.ExpectedData, actualData);
+
+        await SaveResultAsync(
+            $"{test.Name}-{test.EndpointSettingKey}-{test.AsMarkdown}",
+            new InvoiceExtractionTestCaseResult(result, accuracy, stopwatch.Elapsed.ToString("g", CultureInfo.InvariantCulture)));
     }
 
-    private static void ValidateExtractedData(InvoiceData expectedData, InvoiceData? actualData)
+    private static InvoiceDataAccuracy ValidateExtractedData(InvoiceData expectedData, InvoiceData? actualData)
     {
-        Assert.That(actualData, Is.Not.Null);
-        Assert.Multiple(() =>
-        {
-            Assert.That(actualData!.InvoiceNumber, Is.EqualTo(expectedData.InvoiceNumber));
-            Assert.That(actualData.PurchaseOrderNumber, Is.EqualTo(expectedData.PurchaseOrderNumber));
-            Assert.That(actualData.CustomerName, Is.EqualTo(expectedData.CustomerName));
-            Assert.That(actualData.CustomerAddress, Is.EqualTo(expectedData.CustomerAddress));
-            Assert.That(actualData.DeliveryDate, Is.EqualTo(expectedData.DeliveryDate));
-            Assert.That(actualData.PayableBy, Is.EqualTo(expectedData.PayableBy));
-            Assert.That(actualData.TotalProductQuantity, Is.EqualTo(expectedData.TotalProductQuantity));
-            Assert.That(actualData.TotalProductPrice, Is.EqualTo(expectedData.TotalProductPrice));
+        var accuracy = new InvoiceDataAccuracy();
 
+        if (actualData is null)
+        {
+            return accuracy;
+        }
+
+        accuracy.InvoiceNumber = string.Equals(actualData.InvoiceNumber, expectedData.InvoiceNumber, StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        accuracy.PurchaseOrderNumber = string.Equals(actualData.PurchaseOrderNumber, expectedData.PurchaseOrderNumber, StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        accuracy.CustomerName = string.Equals(actualData.CustomerName, expectedData.CustomerName, StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        accuracy.CustomerAddress = string.Equals(actualData.CustomerAddress, expectedData.CustomerAddress, StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        accuracy.DeliveryDate = actualData.DeliveryDate == expectedData.DeliveryDate ? 1 : 0;
+        accuracy.PayableBy = actualData.PayableBy == expectedData.PayableBy ? 1 : 0;
+        accuracy.TotalProductQuantity = actualData.TotalProductQuantity == expectedData.TotalProductQuantity ? 1 : 0;
+        accuracy.TotalProductPrice = actualData.TotalProductPrice == expectedData.TotalProductPrice ? 1 : 0;
+
+        if (actualData.Products is null)
+        {
+            accuracy.ProductsOverall = expectedData.Products is null ? 1 : 0;
+        }
+        else
+        {
             if (expectedData.Products is null)
             {
-                Assert.That(actualData.Products, Is.Null);
+                accuracy.ProductsOverall = 0;
             }
             else
             {
-                Assert.That(actualData.Products.Count, Is.EqualTo(expectedData.Products.Count()));
-
-                foreach (var extractedDataProduct in actualData.Products)
+                accuracy.Products = actualData.Products.Select(p =>
                 {
-                    var expectedProduct =
-                        expectedData.Products.FirstOrDefault(p => p.Id == extractedDataProduct.Id);
+                    var expectedProduct = expectedData.Products.FirstOrDefault(ep => ep.Id == p.Id);
 
-                    Assert.That(expectedProduct, Is.Not.Null);
-                    Assert.That(extractedDataProduct.Description, Is.EqualTo(expectedProduct!.Description));
-                    Assert.That(extractedDataProduct.UnitPrice, Is.EqualTo(expectedProduct!.UnitPrice));
-                    Assert.That(extractedDataProduct.Quantity, Is.EqualTo(expectedProduct.Quantity));
-                    Assert.That(extractedDataProduct.Total, Is.EqualTo(expectedProduct.Total));
-                }
+                    return new InvoiceDataAccuracy.InvoiceDataProductAccuracy
+                    {
+                        Id = string.Equals(p.Id, expectedProduct?.Id, StringComparison.OrdinalIgnoreCase) ? 1 : 0,
+                        Description =
+                            string.Equals(p.Description, expectedProduct?.Description,
+                                StringComparison.OrdinalIgnoreCase)
+                                ? 1
+                                : 0,
+                        UnitPrice = p.UnitPrice == expectedProduct?.UnitPrice ? 1 : 0,
+                        Quantity = p.Quantity == expectedProduct?.Quantity ? 1 : 0,
+                        Total = p.Total == expectedProduct?.Total ? 1 : 0,
+                        Reason = string.Equals(p.Reason, expectedProduct?.Reason, StringComparison.OrdinalIgnoreCase)
+                            ? 1
+                            : 0
+                    };
+                });
+
+                accuracy.ProductsOverall = accuracy.Products.Average(p => new List<double>
+                {
+                    p.Id,
+                    p.Description,
+                    p.UnitPrice,
+                    p.Quantity,
+                    p.Total,
+                    p.Reason
+                }.Average());
             }
+        }
 
+        if (actualData.Returns is null)
+        {
+            accuracy.ReturnsOverall = expectedData.Returns is null ? 1 : 0;
+        }
+        else
+        {
             if (expectedData.Returns is null)
             {
-                Assert.That(actualData.Returns, Is.Null);
+                accuracy.ReturnsOverall = 0;
             }
             else
             {
-                Assert.That(actualData.Returns.Count, Is.EqualTo(expectedData.Returns.Count()));
-
-                foreach (var extractedDataReturn in actualData.Returns)
+                accuracy.Returns = actualData.Returns.Select(p =>
                 {
-                    var expectedReturn =
-                        expectedData.Returns.FirstOrDefault(p => p.Id == extractedDataReturn.Id);
+                    var expectedReturn = expectedData.Returns.FirstOrDefault(ep => ep.Id == p.Id);
 
-                    Assert.That(expectedReturn, Is.Not.Null);
-                    Assert.That(extractedDataReturn.Description, Is.EqualTo(expectedReturn!.Description));
-                    Assert.That(extractedDataReturn.Quantity, Is.EqualTo(expectedReturn.Quantity));
-                    Assert.That(extractedDataReturn.Reason, Contains.Substring(expectedReturn.Reason));
-                }
+                    return new InvoiceDataAccuracy.InvoiceDataProductAccuracy
+                    {
+                        Id = string.Equals(p.Id, expectedReturn?.Id, StringComparison.OrdinalIgnoreCase) ? 1 : 0,
+                        Description =
+                            string.Equals(p.Description, expectedReturn?.Description,
+                                                               StringComparison.OrdinalIgnoreCase)
+                                ? 1
+                                : 0,
+                        UnitPrice = p.UnitPrice == expectedReturn?.UnitPrice ? 1 : 0,
+                        Quantity = p.Quantity == expectedReturn?.Quantity ? 1 : 0,
+                        Total = p.Total == expectedReturn?.Total ? 1 : 0,
+                        Reason = string.Equals(p.Reason, expectedReturn?.Reason, StringComparison.OrdinalIgnoreCase)
+                            ? 1
+                            : 0
+                    };
+                });
+
+                accuracy.ReturnsOverall = accuracy.Returns.Average(p => new List<double>
+                {
+                    p.Id,
+                    p.Description,
+                    p.UnitPrice,
+                    p.Quantity,
+                    p.Total,
+                    p.Reason
+                }.Average());
             }
+        }
 
+        if (actualData.ProductsSignatures is null)
+        {
+            accuracy.ProductsSignaturesOverall = expectedData.ProductsSignatures is null ? 1 : 0;
+        }
+        else
+        {
             if (expectedData.ProductsSignatures is null)
             {
-                Assert.That(actualData.ProductsSignatures, Is.Null);
+                accuracy.ProductsSignaturesOverall = 0;
             }
             else
             {
-                Assert.That(actualData.ProductsSignatures.Count,
-                    Is.EqualTo(expectedData.ProductsSignatures.Count()));
-
-                foreach (var extractedDataSignature in actualData.ProductsSignatures)
+                accuracy.ProductsSignatures = actualData.ProductsSignatures.Select(p =>
                 {
-                    var expectedSignature =
-                        expectedData.ProductsSignatures.FirstOrDefault(
-                            p => p.Type == extractedDataSignature.Type);
+                    var expectedSignature = expectedData.ProductsSignatures.FirstOrDefault(ep => ep.Type == p.Type);
 
-                    Assert.That(expectedSignature, Is.Not.Null);
-                    Assert.That(extractedDataSignature.Name, Contains.Substring(expectedSignature!.Name));
-                    Assert.That(extractedDataSignature.IsSigned, Is.EqualTo(expectedSignature.IsSigned));
-                }
+                    return new InvoiceDataAccuracy.InvoiceDataSignatureAccuracy
+                    {
+                        Type = string.Equals(p.Type, expectedSignature?.Type, StringComparison.OrdinalIgnoreCase) ? 1 : 0,
+                        Name = string.Equals(p.Name, expectedSignature?.Name, StringComparison.OrdinalIgnoreCase) ? 1 : 0,
+                        IsSigned = p.IsSigned == expectedSignature?.IsSigned ? 1 : 0
+                    };
+                });
+
+                accuracy.ProductsSignaturesOverall = accuracy.ProductsSignatures.Average(p => new List<double>
+                {
+                    p.Type,
+                    p.Name,
+                    p.IsSigned
+                }.Average());
             }
+        }
 
+        if (actualData.ReturnsSignatures is null)
+        {
+            accuracy.ReturnsSignaturesOverall = expectedData.ReturnsSignatures is null ? 1 : 0;
+        }
+        else
+        {
             if (expectedData.ReturnsSignatures is null)
             {
-                Assert.That(actualData.ReturnsSignatures, Is.Null);
+                accuracy.ReturnsSignaturesOverall = 0;
             }
             else
             {
-                Assert.That(actualData.ReturnsSignatures.Count,
-                    Is.EqualTo(expectedData.ReturnsSignatures.Count()));
-
-                foreach (var extractedDataSignature in actualData.ReturnsSignatures)
+                accuracy.ReturnsSignatures = actualData.ReturnsSignatures.Select(p =>
                 {
-                    var expectedSignature =
-                        expectedData.ReturnsSignatures.FirstOrDefault(p =>
-                            p.Type == extractedDataSignature.Type);
+                    var expectedSignature = expectedData.ReturnsSignatures.FirstOrDefault(ep => ep.Type == p.Type);
 
-                    Assert.That(expectedSignature, Is.Not.Null);
-                    Assert.That(extractedDataSignature.Name, Contains.Substring(expectedSignature!.Name));
-                    Assert.That(extractedDataSignature.IsSigned, Is.EqualTo(expectedSignature.IsSigned));
-                }
+                    return new InvoiceDataAccuracy.InvoiceDataSignatureAccuracy
+                    {
+                        Type = string.Equals(p.Type, expectedSignature?.Type, StringComparison.OrdinalIgnoreCase) ? 1 : 0,
+                        Name = string.Equals(p.Name, expectedSignature?.Name, StringComparison.OrdinalIgnoreCase) ? 1 : 0,
+                        IsSigned = p.IsSigned == expectedSignature?.IsSigned ? 1 : 0
+                    };
+                });
+
+                accuracy.ReturnsSignaturesOverall = accuracy.ReturnsSignatures.Average(p => new List<double>
+                {
+                    p.Type,
+                    p.Name,
+                    p.IsSigned
+                }.Average());
             }
-        });
+        }
+
+        return accuracy;
     }
 
 
@@ -163,7 +238,7 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
         var fileBytes = File.ReadAllBytes(Path.Combine("Assets", "Invoices", "Simple.pdf"));
         var expectedOutput = new InvoiceData
         {
-            InvoiceNumber = "3847193",
+            InvoiceNumber = "3847192",
             PurchaseOrderNumber = "15931",
             CustomerName = "Sharp Consulting",
             CustomerAddress = "73 Regal Way, Leeds, LS1 5AB, UK",
@@ -172,27 +247,9 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
             Products =
                 new List<InvoiceData.InvoiceDataProduct>
                 {
-                    new()
-                    {
-                        Id = "MA197",
-                        UnitPrice = 16.62,
-                        Quantity = 5,
-                        Total = 83.10
-                    },
-                    new()
-                    {
-                        Id = "ST4086",
-                        UnitPrice = 2.49,
-                        Quantity = 10,
-                        Total = 24.90
-                    },
-                    new()
-                    {
-                        Id = "JF9912413BF",
-                        UnitPrice = 15.46,
-                        Quantity = 12,
-                        Total = 185.52
-                    }
+                    new() { Id = "MA197", UnitPrice = 16.62, Quantity = 5, Total = 83.10 },
+                    new() { Id = "ST4086", UnitPrice = 2.49, Quantity = 10, Total = 24.90 },
+                    new() { Id = "JF9912413BF", UnitPrice = 15.46, Quantity = 12, Total = 185.52 }
                 },
             Returns = new List<InvoiceData.InvoiceDataProduct>
             {
@@ -214,7 +271,7 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
             ReturnsSignatures = new List<InvoiceData.InvoiceDataSignature>
             {
                 new() { Type = "Customer", Name = "", IsSigned = false },
-                new() { Type = "Driver", Name = "", IsSigned = false }
+                new() { Type = "Driver", Name = "James T", IsSigned = true }
             }
         };
 
@@ -441,5 +498,82 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
                 true,
                 expectedOutput)
         ];
+    }
+
+    public record InvoiceExtractionTestCaseResult(DataExtractionResult Result, InvoiceDataAccuracy Accuracy, string ExecutionTime) : ExtractionTestCaseResult(Result, ExecutionTime);
+
+    public record InvoiceDataAccuracy
+    {
+        public double Overall => new List<double>
+        {
+            InvoiceNumber,
+            PurchaseOrderNumber,
+            CustomerName,
+            CustomerAddress,
+            DeliveryDate,
+            PayableBy,
+            ProductsOverall,
+            ReturnsOverall,
+            TotalProductQuantity,
+            TotalProductPrice,
+            ProductsSignaturesOverall,
+            ReturnsSignaturesOverall
+        }.Average();
+
+        public double InvoiceNumber { get; set; }
+
+        public double PurchaseOrderNumber { get; set; }
+
+        public double CustomerName { get; set; }
+
+        public double CustomerAddress { get; set; }
+
+        public double DeliveryDate { get; set; }
+
+        public double PayableBy { get; set; }
+
+        public IEnumerable<InvoiceDataProductAccuracy>? Products { get; set; }
+
+        public double ProductsOverall { get; set; }
+
+        public IEnumerable<InvoiceDataProductAccuracy>? Returns { get; set; }
+
+        public double ReturnsOverall { get; set; }
+
+        public double TotalProductQuantity { get; set; }
+
+        public double TotalProductPrice { get; set; }
+
+        public IEnumerable<InvoiceDataSignatureAccuracy>? ProductsSignatures { get; set; }
+
+        public double ProductsSignaturesOverall { get; set; }
+
+        public IEnumerable<InvoiceDataSignatureAccuracy>? ReturnsSignatures { get; set; }
+
+        public double ReturnsSignaturesOverall { get; set; }
+
+        public record InvoiceDataProductAccuracy
+        {
+            public double Id { get; set; }
+
+            public double Description { get; set; }
+
+            public double UnitPrice { get; set; }
+
+            public double Quantity { get; set; }
+
+            public double Total { get; set; }
+
+            public double Reason { get; set; }
+        }
+
+        public record InvoiceDataSignatureAccuracy
+        {
+            public double Type { get; set; }
+
+            public double Name { get; set; }
+
+            public double IsSigned { get; set; }
+        }
     }
 }

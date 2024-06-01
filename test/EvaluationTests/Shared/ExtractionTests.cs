@@ -11,7 +11,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace EvaluationTests.Shared;
 
-public abstract class ExtractionTests<T>
+public abstract class ExtractionTests<TData>
 {
     private IConfigurationRoot _configuration;
     private EndpointSettings _documentIntelligenceSettings;
@@ -98,7 +98,8 @@ public abstract class ExtractionTests<T>
         return dataExtractor;
     }
 
-    public async Task SaveExtractionDataAsync(string name, ExtractionTestCaseResult result)
+    public async Task SaveResultAsync<TResult>(string name, TResult result)
+        where TResult : ExtractionTestCaseResult
     {
         if (!Directory.Exists("Output"))
         {
@@ -117,7 +118,7 @@ public abstract class ExtractionTests<T>
         ExtractionTestCaseModelConfig ModelConfig,
         byte[] FileBytes,
         bool AsMarkdown,
-        T ExpectedData);
+        TData ExpectedData);
 
     public record ExtractionTestCaseResult(
         DataExtractionResult Result,
