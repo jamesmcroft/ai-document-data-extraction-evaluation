@@ -80,7 +80,7 @@ public abstract class ExtractionTests<TData>
                     ],
                     Temperature = extractionTest.ModelConfig.Temperature,
                     NucleusSamplingFactor = extractionTest.ModelConfig.TopP,
-                    MaxTokens = 4096
+                    MaxTokens = 6144
                 };
 
                 dataExtractor = extractionTest.AsMarkdown

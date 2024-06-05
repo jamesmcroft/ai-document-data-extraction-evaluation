@@ -30,13 +30,13 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
         // Assert
         stopwatch.Stop();
 
+        var actualData = result.Data as InvoiceData;
+        var accuracy = ValidateExtractedData(test.ExpectedData, actualData);
 
         await TestContext.Out.WriteLineAsync($"Prompt Tokens: {result.PromptTokens}");
         await TestContext.Out.WriteLineAsync($"Completion Tokens: {result.CompletionTokens}");
         await TestContext.Out.WriteLineAsync($"Time Elapsed: {stopwatch.Elapsed}");
-
-        var actualData = result.Data as InvoiceData;
-        var accuracy = ValidateExtractedData(test.ExpectedData, actualData);
+        await TestContext.Out.WriteLineAsync($"Accuracy: {accuracy.Overall:P}");
 
         await SaveResultAsync(
             $"{test.Name}-{test.EndpointSettingKey}-{test.AsMarkdown}",
@@ -223,12 +223,12 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
 
     public static ExtractionTestCase[] TestCases()
     {
-        return SimpleTestCases().Concat(ComplexWithHandwritingTestCases()).ToArray();
+        return SimpleInvoiceExtraction().Concat(ComplexContractExtraction()).ToArray();
     }
 
-    private static ExtractionTestCase[] SimpleTestCases()
+    private static ExtractionTestCase[] SimpleInvoiceExtraction()
     {
-        const string testName = nameof(SimpleTestCases);
+        const string testName = nameof(SimpleInvoiceExtraction);
 
         const string systemPrompt =
             "You are an AI assistant that extracts data from documents and returns them as structured JSON objects. Do not return as a code block.";
@@ -352,9 +352,9 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
         ];
     }
 
-    private static ExtractionTestCase[] ComplexWithHandwritingTestCases()
+    private static ExtractionTestCase[] ComplexContractExtraction()
     {
-        const string testName = nameof(ComplexWithHandwritingTestCases);
+        const string testName = nameof(ComplexContractExtraction);
 
         const string systemPrompt =
             "You are an AI assistant that extracts data from documents and returns them as structured JSON objects. Do not return as a code block.";
