@@ -71,9 +71,9 @@ For this technique, the test runs as follows:
 
    > _The details for the specific system and extract prompts are defined in the test cases for consistency across each model and technique. As part of the scenario extract prompt, a one-shot example is provided (see [VehicleInsuranceContractData.cs](./test/EvaluationTests/Assets/Contracts/VehicleInsuranceContractData.cs)). For detail on the test case constructions, see [VehicleInsuranceContractDataExtractionTests.cs](./test/EvaluationTests/VehicleInsuranceContractDataExtractionTests.cs) for more details._
 
-   > [!IMPORTANT]
-   > The GPT-4 with Vision models only support 10 images, so the test performs pre-processing on documents over this limit. This is achieved by stitching pages together to reduce the number of total images to the maximum supported.
-   > _See [AzureOpenAIVisionDocumentDataExtractor.cs](./test/EvaluationTests/Shared/Extraction/AzureOpenAI/AzureOpenAIVisionDocumentDataExtractor.cs) for more details on how the images are processed._
+> [!IMPORTANT]
+> The GPT-4 with Vision models only support 10 images, so the test performs pre-processing on documents over this limit. This is achieved by stitching pages together to reduce the number of total images to the maximum supported.
+> _See [AzureOpenAIVisionDocumentDataExtractor.cs](./test/EvaluationTests/Shared/Extraction/AzureOpenAI/AzureOpenAIVisionDocumentDataExtractor.cs) for more details on how the images are processed._
 
 2. With this construct, the request is made to the language model.
    > _See [AzureOpenAIVisionDocumentDataExtractor.cs](./test/EvaluationTests/Shared/Extraction/AzureOpenAI/AzureOpenAIVisionDocumentDataExtractor.cs) for more details on how the request is made._
