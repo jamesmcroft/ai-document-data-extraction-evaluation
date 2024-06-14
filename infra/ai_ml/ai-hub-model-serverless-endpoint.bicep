@@ -59,6 +59,7 @@ param model serverlessModelInfo
 param keyVaultConfig keyVaultConfigInfo?
 
 var models = loadJsonContent('./models.json')
+var modelId = contains(model, 'id') ? model.id! : models.serverless[model.name!]
 
 resource aiHubProject 'Microsoft.MachineLearningServices/workspaces@2024-04-01-preview' existing = {
   name: aiHubName
@@ -74,7 +75,7 @@ resource modelServerlessEndpoint 'Microsoft.MachineLearningServices/workspaces/s
   }
   properties: {
     modelSettings: {
-      modelId: model.id ?? models.serverless[model.name!]
+      modelId: modelId
     }
   }
 }
