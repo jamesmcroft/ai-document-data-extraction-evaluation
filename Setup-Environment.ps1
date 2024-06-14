@@ -37,6 +37,12 @@ else {
 }
 
 $KeyVaultName = $InfrastructureOutputs.keyVaultInfo.value.name
+
+## Update the Key Vault firewall rules with the current IP address
+$CurrentIpAddress = (Invoke-RestMethod -Uri 'http://ipinfo.io/json' | Select-Object -ExpandProperty ip)
+Write-Host "Updating Key Vault firewall rules with current IP address: $CurrentIpAddress..."
+az keyvault network-rule add --name $KeyVaultName --ip-address $CurrentIpAddress
+
 $DocumentIntelligenceEndpoint = $InfrastructureOutputs.documentIntelligenceInfo.value.endpoint
 $Gpt35ModelEndpoint = $InfrastructureOutputs.aiModelsInfo.value.gpt35Turbo.endpoint
 $Gpt35ModelDeploymentName = $InfrastructureOutputs.aiModelsInfo.value.gpt35Turbo.deploymentName
@@ -61,6 +67,7 @@ $Configuration.GPT4Omni.Endpoint = $Gpt4OmniModelEndpoint
 $Configuration.GPT4Omni.DeploymentName = $Gpt4OmniModelDeploymentName
 $Configuration.Phi3Mini128kInstruct.Endpoint = $Phi3MiniModelEndpoint
 $Configuration.Phi3Mini128kInstruct.ApiKey = $Phi3MiniModelDeploymentPrimaryKey
+$Configuration | ConvertTo-Json -Depth 100 | Set-Content -Path $ConfigurationFile
 
 Pop-Location
 
