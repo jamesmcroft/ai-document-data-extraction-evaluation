@@ -234,7 +234,7 @@ resource cognitiveServicesOpenAIContributor 'Microsoft.Authorization/roleDefinit
   name: roles.ai.cognitiveServicesOpenAIContributor
 }
 
-@description('Location for Azure OpenAI service (requires gpt-35-turbo 1106, gpt-4o 2024-05-13, gpt-4 turbo-2024-04-09).')
+@description('Location for Azure AI service that will be linked to the AI Hub (requires gpt-35-turbo 1106, gpt-4o 2024-05-13, gpt-4 turbo-2024-04-09).')
 var primaryAIServiceLocation = 'swedencentral'
 var primaryAIServiceResourceToken = toLower(uniqueString(subscription().id, workloadName, primaryAIServiceLocation))
 
@@ -303,11 +303,11 @@ module primaryAIServices './ai_ml/ai-services.bicep' = {
 }
 
 module aiHub './ai_ml/ai-hub.bicep' = {
-  name: '${abbrs.ai.aiHub}${resourceToken}'
+  name: '${abbrs.ai.aiHub}${primaryAIServiceResourceToken}'
   scope: resourceGroup
   params: {
-    name: '${abbrs.ai.aiHub}${resourceToken}'
-    location: location
+    name: '${abbrs.ai.aiHub}${primaryAIServiceResourceToken}'
+    location: primaryAIServiceLocation
     tags: union(tags, {})
     identityId: managedIdentity.outputs.id
     storageAccountId: storageAccount.outputs.id
@@ -318,14 +318,14 @@ module aiHub './ai_ml/ai-hub.bicep' = {
   }
 }
 
-var phi3MiniModelDeploymentName = 'phi-3-mini-128k-${resourceToken}'
+var phi3MiniModelDeploymentName = 'phi-3-mini-128k-${primaryAIServiceResourceToken}'
 
 module aiHubProject './ai_ml/ai-hub-project.bicep' = {
   name: '${abbrs.ai.aiHubProject}${workloadName}'
   scope: resourceGroup
   params: {
     name: '${abbrs.ai.aiHubProject}${workloadName}'
-    location: location
+    location: primaryAIServiceLocation
     tags: union(tags, {})
     aiHubName: aiHub.outputs.name
     serverlessModels: [
