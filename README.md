@@ -94,7 +94,15 @@ The project structure is as follows:
 
 ## Running the tests
 
-To run the tests, you must setup the necessary Azure services and configure the test project with the required environment variables. To setup an environment in Azure, simply run the [Setup-Environment.ps1](./Setup-Environment.ps1) script from the root of the project:
+To run the tests, you must setup the necessary Azure services and configure the test project with the required environment variables. 
+
+> [!NOTE]
+> If you already have an Azure environment configured with the following resources, you can update the [appsettings.Test.json](./test/EvaluationTests/appsettings.Test.json) file with the necessary details for your own environment.
+> - [Azure AI Document Intelligence - Deployed in a region with 2024-02-29-preview API support (Recommended: **westeurope**)](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/sdk-overview-v4-0?view=doc-intel-4.0.0&tabs=csharp)
+> - [Azure OpenAI - Deployed in a region with GPT-3.5 Turbo, GPT-4 Turbo, and GPT-4 Omni support (Recommended: **swedencentral**)](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models#standard-deployment-model-availability)
+> - [Phi-3 Mini 128K Instruct - Deployed as a serverless endpoint in Azure AI Studio](https://ai.azure.com/explore/models/Phi-3-mini-128k-instruct/version/7/registry/azureml?tid=72f988bf-86f1-41af-91ab-2d7cd011db47)
+
+To setup an environment in Azure, simply run the [Setup-Environment.ps1](./Setup-Environment.ps1) script from the root of the project:
 
 ```powershell
 .\Setup-Environment.ps1 -DeploymentName <DeploymentName> -Location <Location> -SkipInfrastructure $false
@@ -102,7 +110,9 @@ To run the tests, you must setup the necessary Azure services and configure the 
 
 This script will deploy the necessary Azure services using the Azure Bicep template in the [infra](./infra/main.bicep) folder.
 
-Once deployed, the script will also update the [appsettings.Test.json](./test/EvaluationTests/appsettings.Test.json) file with the necessary connection strings and keys for the Azure services. You can then run the tests using the following command:
+Once deployed, the script will also update the [appsettings.Test.json](./test/EvaluationTests/appsettings.Test.json) file with the necessary connection strings and keys for the Azure services. 
+
+You can then run the tests using the following command:
 
 ```powershell
 dotnet test
