@@ -20,24 +20,10 @@ param tags object = {
 
 @description('Principal ID of the user that will be granted permission to access services.')
 param userPrincipalId string
-@description('Primary location for the Document Intelligence service. Default is westeurope for latest preview support.')
-param documentIntelligenceLocation string = 'westeurope'
-@description('Primary location for the OpenAI GPT-4 omni deployment. Default is West US 3')
-param secondaryAIServicesLocation string = 'westus3'
 
 var abbrs = loadJsonContent('./abbreviations.json')
 var roles = loadJsonContent('./roles.json')
 var resourceToken = toLower(uniqueString(subscription().id, workloadName, location))
-var documentIntelligenceResourceToken = toLower(uniqueString(
-  subscription().id,
-  workloadName,
-  documentIntelligenceLocation
-))
-var secondaryAIServicesResourceToken = toLower(uniqueString(
-  subscription().id,
-  workloadName,
-  secondaryAIServicesLocation
-))
 
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: !empty(resourceGroupName) ? resourceGroupName : '${abbrs.managementGovernance.resourceGroup}${workloadName}'
@@ -83,6 +69,14 @@ resource cognitiveServicesUser 'Microsoft.Authorization/roleDefinitions@2022-04-
   scope: resourceGroup
   name: roles.ai.cognitiveServicesUser
 }
+
+@description('Location for Document Intelligence preview features (requires 2024-02-29-preview).')
+var documentIntelligenceLocation = 'westeurope'
+var documentIntelligenceResourceToken = toLower(uniqueString(
+  subscription().id,
+  workloadName,
+  documentIntelligenceLocation
+))
 
 module documentIntelligence './ai_ml/document-intelligence.bicep' = {
   name: '${abbrs.ai.documentIntelligence}${documentIntelligenceResourceToken}'
@@ -240,18 +234,34 @@ resource cognitiveServicesOpenAIContributor 'Microsoft.Authorization/roleDefinit
   name: roles.ai.cognitiveServicesOpenAIContributor
 }
 
+@description('Location for Azure OpenAI service (requires gpt-35-turbo 1106, gpt-4o 2024-05-13, gpt-4 turbo-2024-04-09).')
+var primaryAIServiceLocation = 'swedencentral'
+var primaryAIServiceResourceToken = toLower(uniqueString(subscription().id, workloadName, primaryAIServiceLocation))
+
 var gpt4OmniModelDeploymentName = 'gpt-4o'
 var gpt4ModelDeploymentName = 'gpt-4'
 var gpt35ModelDeploymentName = 'gpt-35-turbo'
 
 module primaryAIServices './ai_ml/ai-services.bicep' = {
-  name: '${abbrs.ai.aiServices}${resourceToken}'
+  name: '${abbrs.ai.aiServices}${primaryAIServiceResourceToken}'
   scope: resourceGroup
   params: {
-    name: '${abbrs.ai.aiServices}${resourceToken}'
-    location: location
+    name: '${abbrs.ai.aiServices}${primaryAIServiceResourceToken}'
+    location: primaryAIServiceLocation
     tags: union(tags, {})
     deployments: [
+      {
+        name: gpt4OmniModelDeploymentName
+        model: {
+          format: 'OpenAI'
+          name: 'gpt-4o'
+          version: '2024-05-13'
+        }
+        sku: {
+          name: 'Standard'
+          capacity: 10
+        }
+      }
       {
         name: gpt4ModelDeploymentName
         model: {
@@ -292,42 +302,6 @@ module primaryAIServices './ai_ml/ai-services.bicep' = {
   }
 }
 
-module secondaryAIServices './ai_ml/ai-services.bicep' = {
-  name: '${abbrs.ai.aiServices}${secondaryAIServicesResourceToken}'
-  scope: resourceGroup
-  params: {
-    name: '${abbrs.ai.aiServices}${secondaryAIServicesResourceToken}'
-    location: secondaryAIServicesLocation
-    tags: union(tags, {})
-    deployments: [
-      {
-        name: gpt4OmniModelDeploymentName
-        model: {
-          format: 'OpenAI'
-          name: 'gpt-4o'
-          version: '2024-05-13'
-        }
-        sku: {
-          name: 'Standard'
-          capacity: 10
-        }
-      }
-    ]
-    roleAssignments: [
-      {
-        principalId: userPrincipalId
-        roleDefinitionId: cognitiveServicesOpenAIContributor.id
-        principalType: 'User'
-      }
-      {
-        principalId: managedIdentity.outputs.principalId
-        roleDefinitionId: cognitiveServicesOpenAIContributor.id
-        principalType: 'ServicePrincipal'
-      }
-    ]
-  }
-}
-
 module aiHub './ai_ml/ai-hub.bicep' = {
   name: '${abbrs.ai.aiHub}${resourceToken}'
   scope: resourceGroup
@@ -344,6 +318,8 @@ module aiHub './ai_ml/ai-hub.bicep' = {
   }
 }
 
+var phi3MiniModelDeploymentName = 'phi-3-mini-128k-${resourceToken}'
+
 module aiHubProject './ai_ml/ai-hub-project.bicep' = {
   name: '${abbrs.ai.aiHubProject}${workloadName}'
   scope: resourceGroup
@@ -352,6 +328,19 @@ module aiHubProject './ai_ml/ai-hub-project.bicep' = {
     location: location
     tags: union(tags, {})
     aiHubName: aiHub.outputs.name
+    serverlessModels: [
+      {
+        name: phi3MiniModelDeploymentName
+        model: {
+          name: 'Phi-3-mini-128k-instruct'
+        }
+        keyVaultConfig: {
+          name: keyVault.outputs.name
+          primaryKeySecretName: 'Phi-3-mini-128k-instruct-PrimaryKey'
+          secondaryKeySecretName: 'Phi-3-mini-128k-instruct-SecondaryKey'
+        }
+      }
+    ]
   }
 }
 
@@ -361,67 +350,42 @@ output subscriptionInfo object = {
 }
 
 output resourceGroupInfo object = {
-  id: resourceGroup.id
   name: resourceGroup.name
   location: resourceGroup.location
   workloadName: workloadName
 }
 
 output storageAccountInfo object = {
-  id: storageAccount.outputs.id
   name: storageAccount.outputs.name
+  location: location
 }
 
 output keyVaultInfo object = {
-  id: keyVault.outputs.id
   name: keyVault.outputs.name
-  uri: keyVault.outputs.uri
-}
-
-output logAnalyticsWorkspaceInfo object = {
-  id: logAnalyticsWorkspace.outputs.id
-  name: logAnalyticsWorkspace.outputs.name
-  customerId: logAnalyticsWorkspace.outputs.customerId
-}
-
-output applicationInsightsInfo object = {
-  id: applicationInsights.outputs.id
-  name: applicationInsights.outputs.name
-}
-
-output containerRegistryInfo object = {
-  id: containerRegistry.outputs.id
-  name: containerRegistry.outputs.name
-  loginServer: containerRegistry.outputs.loginServer
-}
-
-output primaryAIServicesInfo object = {
-  id: primaryAIServices.outputs.id
-  name: primaryAIServices.outputs.name
-  endpoint: primaryAIServices.outputs.endpoint
-  host: primaryAIServices.outputs.host
-  gpt4ModelDeploymentName: gpt4ModelDeploymentName
-  gpt35ModelDeploymentName: gpt35ModelDeploymentName
-}
-
-output secondaryAIServicesInfo object = {
-  id: secondaryAIServices.outputs.id
-  name: secondaryAIServices.outputs.name
-  endpoint: secondaryAIServices.outputs.endpoint
-  host: secondaryAIServices.outputs.host
-  gpt4OmniModelDeploymentName: gpt4OmniModelDeploymentName
+  location: location
 }
 
 output documentIntelligenceInfo object = {
-  id: documentIntelligence.outputs.id
-  name: documentIntelligence.outputs.name
   endpoint: documentIntelligence.outputs.endpoint
-  host: documentIntelligence.outputs.host
-  identityPrincipalId: documentIntelligence.outputs.identityPrincipalId
+  location: documentIntelligenceLocation
 }
 
-output aiHubInfo object = {
-  id: aiHub.outputs.id
-  name: aiHub.outputs.name
-  identityPrincipalId: aiHub.outputs.identityPrincipalId
+output aiModelsInfo object = {
+  gpt35Turbo: {
+    endpoint: primaryAIServices.outputs.endpoint
+    deploymentName: gpt35ModelDeploymentName
+  }
+  gpt4Turbo: {
+    endpoint: primaryAIServices.outputs.endpoint
+    deploymentName: gpt4ModelDeploymentName
+  }
+  gpt4Omni: {
+    endpoint: primaryAIServices.outputs.endpoint
+    deploymentName: gpt4OmniModelDeploymentName
+  }
+  phi3Mini: {
+    endpoint: aiHubProject.outputs.serverlessModelDeployments[0].endpoint
+    primaryKeySecretName: aiHubProject.outputs.serverlessModelDeployments[0].primaryKeySecretName
+    secondaryKeySecretName: aiHubProject.outputs.serverlessModelDeployments[0].secondaryKeySecretName
+  }
 }

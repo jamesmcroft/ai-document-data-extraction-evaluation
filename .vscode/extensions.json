@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "ms-vscode.vscode-node-azure-pack",
+    "ms-dotnettools.csharp",
+    "ms-azuretools.vscode-bicep",
+    "EditorConfig.EditorConfig"
+  ]
+}

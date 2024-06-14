@@ -35,11 +35,27 @@ public class VehicleInsuranceContractData
         {
             AnnualTotal = 0.0,
             PayableByDate = DateTime.MinValue,
+            DocumentSectionCitations = new List<DocumentSectionCitation>
+            {
+                new()
+                {
+                    Page = string.Empty,
+                    Section = string.Empty
+                }
+            }
         },
         Renewal = new RenewalDetails
         {
             RenewalNotificationDate = DateTime.MinValue,
-            RenewalDueDate = DateTime.MinValue
+            RenewalDueDate = DateTime.MinValue,
+            DocumentSectionCitations = new List<DocumentSectionCitation>
+            {
+                new()
+                {
+                    Page = string.Empty,
+                    Section = string.Empty
+                }
+            }
         },
         EffectiveFrom = DateTime.MinValue,
         EffectiveTo = DateTime.MinValue,
@@ -52,7 +68,15 @@ public class VehicleInsuranceContractData
             Address = string.Empty,
             EmailAddress = string.Empty,
             TotalYearsOfResidenceInUK = 0,
-            DrivingLicenseNumber = string.Empty
+            DrivingLicenseNumber = string.Empty,
+            DocumentSectionCitations = new List<DocumentSectionCitation>
+            {
+                new()
+                {
+                    Page = string.Empty,
+                    Section = string.Empty
+                }
+            }
         },
         Vehicle = new VehicleDetails
         {
@@ -60,19 +84,43 @@ public class VehicleInsuranceContractData
             Make = string.Empty,
             Model = string.Empty,
             Year = 2024,
-            Value = 0.0
+            Value = 0.0,
+            DocumentSectionCitations = new List<DocumentSectionCitation>
+            {
+                new()
+                {
+                    Page = string.Empty,
+                    Section = string.Empty
+                }
+            }
         },
         AccidentExcess = new ExcessDetails
         {
             Compulsory = 0.0,
             Voluntary = 0.0,
-            UnapprovedRepairPenalty = 0.0
+            UnapprovedRepairPenalty = 0.0,
+            DocumentSectionCitations = new List<DocumentSectionCitation>
+            {
+                new()
+                {
+                    Page = string.Empty,
+                    Section = string.Empty
+                }
+            }
         },
         FireAndTheftExcess = new ExcessDetails
         {
             Compulsory = 0.0,
             Voluntary = 0.0,
-            UnapprovedRepairPenalty = 0.0
+            UnapprovedRepairPenalty = 0.0,
+            DocumentSectionCitations = new List<DocumentSectionCitation>
+            {
+                new()
+                {
+                    Page = string.Empty,
+                    Section = string.Empty
+                }
+            }
         }
     };
 
@@ -91,6 +139,8 @@ public class VehicleInsuranceContractData
         public int? TotalYearsOfResidenceInUK { get; set; }
 
         public string? DrivingLicenseNumber { get; set; }
+
+        public IEnumerable<DocumentSectionCitation>? DocumentSectionCitations { get; set; }
     }
 
     public class VehicleDetails
@@ -104,6 +154,8 @@ public class VehicleInsuranceContractData
         public int? Year { get; set; }
 
         public double? Value { get; set; }
+
+        public IEnumerable<DocumentSectionCitation>? DocumentSectionCitations { get; set; }
     }
 
     public class CostDetails
@@ -112,6 +164,8 @@ public class VehicleInsuranceContractData
 
         [JsonConverter(typeof(UtcDateTimeConverter))]
         public DateTime? PayableByDate { get; set; }
+
+        public IEnumerable<DocumentSectionCitation>? DocumentSectionCitations { get; set; }
     }
 
     public class RenewalDetails
@@ -121,6 +175,8 @@ public class VehicleInsuranceContractData
 
         [JsonConverter(typeof(UtcDateTimeConverter))]
         public DateTime? RenewalDueDate { get; set; }
+
+        public IEnumerable<DocumentSectionCitation>? DocumentSectionCitations { get; set; }
     }
 
     public class ExcessDetails
@@ -130,5 +186,14 @@ public class VehicleInsuranceContractData
         public double? Voluntary { get; set; }
 
         public double? UnapprovedRepairPenalty { get; set; }
+
+        public IEnumerable<DocumentSectionCitation>? DocumentSectionCitations { get; set; }
+    }
+
+    public class DocumentSectionCitation
+    {
+        public string? Page { get; set; }
+
+        public string? Section { get; set; }
     }
 }

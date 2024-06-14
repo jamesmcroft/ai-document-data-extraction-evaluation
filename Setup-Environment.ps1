@@ -23,21 +23,6 @@ param
     [string]$SkipInfrastructure
 )
 
-function Set-ConfigurationFileVariable($configurationFile, $variableName, $variableValue) {
-    if (-not (Test-Path $configurationFile)) {
-        New-Item -Path $configurationFile -ItemType file
-    }
-
-    if (Select-String -Path $configurationFile -Pattern $variableName) {
-        (Get-Content $configurationFile) | Foreach-Object {
-            $_ -replace "$variableName = .*", "$variableName = $variableValue"
-        } | Set-Content $configurationFile
-    }
-    else {
-        Add-Content -Path $configurationFile -value "$variableName = $variableValue"
-    }
-}
-
 Write-Host "Starting environment setup..."
 
 if ($SkipInfrastructure -eq '$false' -or -not (Test-Path -Path './infra/InfrastructureOutputs.json')) {
@@ -51,31 +36,31 @@ else {
     $InfrastructureOutputs = Get-Content -Path './infra/InfrastructureOutputs.json' -Raw | ConvertFrom-Json
 }
 
-$TenantId = $InfrastructureOutputs.subscriptionInfo.value.tenantId
-$ResourceGroupName = $InfrastructureOutputs.resourceGroupInfo.value.name
 $KeyVaultName = $InfrastructureOutputs.keyVaultInfo.value.name
-$StorageAccountName = $InfrastructureOutputs.storageAccountInfo.value.name
 $DocumentIntelligenceEndpoint = $InfrastructureOutputs.documentIntelligenceInfo.value.endpoint
-$PrimaryAIServicesEndpoint = $InfrastructureOutputs.primaryAIServicesInfo.value.endpoint
-$Gpt35ModelDeploymentName = $InfrastructureOutputs.primaryAIServicesInfo.value.gpt35ModelDeploymentName
-$Gpt4ModelDeploymentName = $InfrastructureOutputs.primaryAIServicesInfo.value.gpt4ModelDeploymentName
-$SecondaryAIServicesEndpoint = $InfrastructureOutputs.secondaryAIServicesInfo.value.endpoint
-$Gpt4OmniModelDeploymentName = $InfrastructureOutputs.secondaryAIServicesInfo.value.gpt4OmniModelDeploymentName
+$Gpt35ModelEndpoint = $InfrastructureOutputs.aiModelsInfo.value.gpt35Turbo.endpoint
+$Gpt35ModelDeploymentName = $InfrastructureOutputs.aiModelsInfo.value.gpt35Turbo.deploymentName
+$Gpt4ModelEndpoint = $InfrastructureOutputs.aiModelsInfo.value.gpt4Turbo.endpoint
+$Gpt4ModelDeploymentName = $InfrastructureOutputs.aiModelsInfo.value.gpt4Turbo.deploymentName
+$Gpt4OmniModelEndpoint = $InfrastructureOutputs.aiModelsInfo.value.gpt4Omni.endpoint
+$Gpt4OmniModelDeploymentName = $InfrastructureOutputs.aiModelsInfo.value.gpt4Omni.deploymentName
+$Phi3MiniModelEndpoint = $InfrastructureOutputs.aiModelsInfo.value.phi3Mini.endpoint
+$Phi3MiniModelDeploymentPrimaryKeySecretName = $InfrastructureOutputs.aiModelsInfo.value.phi3Mini.primaryKeySecretName
+$Phi3MiniModelDeploymentPrimaryKey = (az keyvault secret show --vault-name $KeyVaultName --name $Phi3MiniModelDeploymentPrimaryKeySecretName --query value -o tsv)
 
-Write-Host "Updating local settings..."
+Write-Host "Updating test/EvaluationTests/appsettings.Test.json settings..."
 
-$ConfigurationFile = './config.env'
-
-Set-ConfigurationFileVariable -configurationFile $ConfigurationFile -variableName 'AZURE_TENANT_ID' -variableValue $TenantId
-Set-ConfigurationFileVariable -configurationFile $ConfigurationFile -variableName 'AZURE_RESOURCE_GROUP_NAME' -variableValue $ResourceGroupName
-Set-ConfigurationFileVariable -configurationFile $ConfigurationFile -variableName 'AZURE_KEY_VAULT_NAME' -variableValue $KeyVaultName
-Set-ConfigurationFileVariable -configurationFile $ConfigurationFile -variableName 'AZURE_STORAGE_ACCOUNT_NAME' -variableValue $StorageAccountName
-Set-ConfigurationFileVariable -configurationFile $ConfigurationFile -variableName 'DOCUMENT_INTELLIGENCE_ENDPOINT' -variableValue $DocumentIntelligenceEndpoint
-Set-ConfigurationFileVariable -configurationFile $ConfigurationFile -variableName 'PRIMARY_AI_SERVICES_ENDPOINT' -variableValue $PrimaryAIServicesEndpoint
-Set-ConfigurationFileVariable -configurationFile $ConfigurationFile -variableName 'GPT35_MODEL_DEPLOYMENT_NAME' -variableValue $Gpt35ModelDeploymentName
-Set-ConfigurationFileVariable -configurationFile $ConfigurationFile -variableName 'GPT4_MODEL_DEPLOYMENT_NAME' -variableValue $Gpt4ModelDeploymentName
-Set-ConfigurationFileVariable -configurationFile $ConfigurationFile -variableName 'SECONDARY_AI_SERVICES_ENDPOINT' -variableValue $SecondaryAIServicesEndpoint
-Set-ConfigurationFileVariable -configurationFile $ConfigurationFile -variableName 'GPT4_OMNI_MODEL_DEPLOYMENT_NAME' -variableValue $Gpt4OmniModelDeploymentName
+$ConfigurationFile = './test/EvaluationTests/appsettings.Test.json'
+$Configuration = Get-Content -Path $ConfigurationFile -Raw | ConvertFrom-Json
+$Configuration.DocumentIntelligence.Endpoint = $DocumentIntelligenceEndpoint
+$Configuration.GPT35Turbo.Endpoint = $Gpt35ModelEndpoint
+$Configuration.GPT35Turbo.DeploymentName = $Gpt35ModelDeploymentName
+$Configuration.GPT4Turbo.Endpoint = $Gpt4ModelEndpoint
+$Configuration.GPT4Turbo.DeploymentName = $Gpt4ModelDeploymentName
+$Configuration.GPT4Omni.Endpoint = $Gpt4OmniModelEndpoint
+$Configuration.GPT4Omni.DeploymentName = $Gpt4OmniModelDeploymentName
+$Configuration.Phi3Mini128kInstruct.Endpoint = $Phi3MiniModelEndpoint
+$Configuration.Phi3Mini128kInstruct.ApiKey = $Phi3MiniModelDeploymentPrimaryKey
 
 Pop-Location
 
