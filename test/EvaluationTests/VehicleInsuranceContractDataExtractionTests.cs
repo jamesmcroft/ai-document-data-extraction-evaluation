@@ -41,10 +41,7 @@ public class VehicleInsuranceContractDataExtractionTests
         await TestContext.Out.WriteLineAsync($"Time Elapsed: {stopwatch.Elapsed}");
         await TestContext.Out.WriteLineAsync($"Accuracy: {accuracy.Overall:P}");
 
-        await SaveResultAsync(
-            $"{test.Name}-{test.EndpointSettingKey}-{test.AsMarkdown}",
-            new VehicleInsuranceContractExtractionTestCaseResult(result, accuracy,
-                stopwatch.Elapsed.ToString("g", CultureInfo.InvariantCulture)));
+        await SaveResultAsync(new VehicleInsuranceContractExtractionTestCaseResult(result, accuracy, stopwatch.Elapsed.ToString("g", CultureInfo.InvariantCulture)));
     }
 
     private static VehicleInsuranceContractDataAccuracy ValidateExtractedData(VehicleInsuranceContractData expectedData,
@@ -293,12 +290,12 @@ public class VehicleInsuranceContractDataExtractionTests
 
     public static ExtractionTestCase[] TestCases()
     {
-        return SimpleContractExtraction().ToArray();
+        return InsurancePolicyInference().ToArray();
     }
 
-    private static ExtractionTestCase[] SimpleContractExtraction()
+    private static ExtractionTestCase[] InsurancePolicyInference()
     {
-        const string testName = nameof(SimpleContractExtraction);
+        const string testName = nameof(InsurancePolicyInference);
 
         const string systemPrompt =
             "You are an AI assistant that extracts data from documents and returns them as structured JSON objects. Do not return as a code block.";

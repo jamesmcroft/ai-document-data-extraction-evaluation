@@ -38,9 +38,7 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
         await TestContext.Out.WriteLineAsync($"Time Elapsed: {stopwatch.Elapsed}");
         await TestContext.Out.WriteLineAsync($"Accuracy: {accuracy.Overall:P}");
 
-        await SaveResultAsync(
-            $"{test.Name}-{test.EndpointSettingKey}-{test.AsMarkdown}",
-            new InvoiceExtractionTestCaseResult(result, accuracy, stopwatch.Elapsed.ToString("g", CultureInfo.InvariantCulture)));
+        await SaveResultAsync(new InvoiceExtractionTestCaseResult(result, accuracy, stopwatch.Elapsed.ToString("g", CultureInfo.InvariantCulture)));
     }
 
     private static InvoiceDataAccuracy ValidateExtractedData(InvoiceData expectedData, InvoiceData? actualData)
@@ -223,12 +221,12 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
 
     public static ExtractionTestCase[] TestCases()
     {
-        return SimpleInvoiceExtraction().Concat(ComplexContractExtraction()).ToArray();
+        return SimpleInvoice().Concat(ComplexInvoice()).ToArray();
     }
 
-    private static ExtractionTestCase[] SimpleInvoiceExtraction()
+    private static ExtractionTestCase[] SimpleInvoice()
     {
-        const string testName = nameof(SimpleInvoiceExtraction);
+        const string testName = nameof(SimpleInvoice);
 
         const string systemPrompt =
             "You are an AI assistant that extracts data from documents and returns them as structured JSON objects. Do not return as a code block.";
@@ -352,9 +350,9 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
         ];
     }
 
-    private static ExtractionTestCase[] ComplexContractExtraction()
+    private static ExtractionTestCase[] ComplexInvoice()
     {
-        const string testName = nameof(ComplexContractExtraction);
+        const string testName = nameof(ComplexInvoice);
 
         const string systemPrompt =
             "You are an AI assistant that extracts data from documents and returns them as structured JSON objects. Do not return as a code block.";

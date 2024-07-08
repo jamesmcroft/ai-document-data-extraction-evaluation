@@ -23,7 +23,7 @@ public class AzureMLServerlessClient(Uri endpoint, string apiKey)
         var context = new StringContent(JsonSerializer.Serialize(chatCompletionOptions));
         context.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
-        var response = await client.PostAsync("", context, cancellationToken);
+        var response = await client.PostAsync("v1/chat/completions", context, cancellationToken);
 
         if (response.IsSuccessStatusCode)
         {

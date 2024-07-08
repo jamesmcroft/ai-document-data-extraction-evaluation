@@ -32,6 +32,12 @@ public abstract class AzureMLServerlessDocumentDataExtractor(
                 var extractedData = completion.Message.Content;
                 if (!string.IsNullOrEmpty(extractedData))
                 {
+                    if (extractedData.Contains("```json"))
+                    {
+                        // Strip the Markdown block code syntax from the start and end
+                        extractedData = extractedData.Replace("```json", string.Empty).Replace("```", string.Empty);
+                    }
+
                     result.Content = extractedData;
                 }
             }

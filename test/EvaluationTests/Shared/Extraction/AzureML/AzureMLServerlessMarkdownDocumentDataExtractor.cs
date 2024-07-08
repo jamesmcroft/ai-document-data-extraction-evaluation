@@ -1,12 +1,15 @@
+using System.Globalization;
 using System.Text;
 using EvaluationTests.Shared.Markdown;
+using EvaluationTests.Shared.Storage;
 
 namespace EvaluationTests.Shared.Extraction.AzureML;
 
 public class AzureMLServerlessMarkdownDocumentDataExtractor(
     AzureMLServerlessClient client,
     AzureMLServerlessChatCompletionOptions chatCompletionOptions,
-    IDocumentMarkdownConverter markdownConverter)
+    IDocumentMarkdownConverter markdownConverter,
+    TestOutputStorage? outputStorage = null)
     : AzureMLServerlessDocumentDataExtractor(client, chatCompletionOptions)
 {
     public override async Task<DataExtractionResult> FromDocumentBytesAsync(
@@ -19,6 +22,12 @@ public class AzureMLServerlessMarkdownDocumentDataExtractor(
         if (markdownContent == null)
         {
             return result;
+        }
+
+        if (outputStorage != null)
+        {
+            await outputStorage.SaveBytesAsync(markdownContent,
+                $"{DateTime.UtcNow.ToString("yy-MM-dd", CultureInfo.InvariantCulture)}.Markdown.md");
         }
 
         return await GetChatCompletionsAsync(

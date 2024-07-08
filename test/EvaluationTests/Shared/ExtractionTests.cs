@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.Json;
 using Azure.AI.DocumentIntelligence;
 using Azure.AI.OpenAI;
 using Azure.Identity;
@@ -7,6 +6,7 @@ using EvaluationTests.Shared.Extraction;
 using EvaluationTests.Shared.Extraction.AzureML;
 using EvaluationTests.Shared.Extraction.AzureOpenAI;
 using EvaluationTests.Shared.Markdown;
+using EvaluationTests.Shared.Storage;
 using Microsoft.Extensions.Configuration;
 
 namespace EvaluationTests.Shared;
@@ -16,7 +16,7 @@ public abstract class ExtractionTests<TData>
     private IConfigurationRoot _configuration;
     private EndpointSettings _documentIntelligenceSettings;
     private DefaultAzureCredential _defaultCredential;
-    private readonly JsonSerializerOptions _indentSerializerSettings = new() { WriteIndented = true };
+    private TestOutputStorage _outputStorage;
 
     public virtual void Initialize()
     {
@@ -30,8 +30,13 @@ public abstract class ExtractionTests<TData>
         _defaultCredential = new DefaultAzureCredential();
     }
 
-    public IDocumentDataExtractor GetDocumentDataExtractor(ExtractionTestCase extractionTest)
+    public IDocumentDataExtractor GetDocumentDataExtractor(ExtractionTestCase extractionTest, bool outputDebug = false)
     {
+        _outputStorage = new TestOutputStorage(
+            extractionTest.Name,
+            extractionTest.EndpointSettingKey,
+            extractionTest.AsMarkdown);
+
         var endpointSettings =
             EndpointSettings.FromConfiguration(_configuration.GetRequiredSection(extractionTest.EndpointSettingKey));
 
@@ -63,10 +68,12 @@ public abstract class ExtractionTests<TData>
                     ? new AzureOpenAIMarkdownDocumentDataExtractor(
                         openAIClient,
                         openAIOptions,
-                        markdownConverter!)
+                        markdownConverter!,
+                        outputDebug ? _outputStorage : null)
                     : new AzureOpenAIVisionDocumentDataExtractor(
                         openAIClient,
-                        openAIOptions);
+                        openAIOptions,
+                        outputDebug ? _outputStorage : null);
                 break;
             case EndpointType.AzureMLServerless:
                 var azureMLClient =
@@ -87,9 +94,10 @@ public abstract class ExtractionTests<TData>
                     ? new AzureMLServerlessMarkdownDocumentDataExtractor(
                         azureMLClient,
                         azureMLOptions,
-                        markdownConverter!)
+                        markdownConverter!,
+                        outputDebug ? _outputStorage : null)
                     : throw new NotImplementedException(
-                        "Non-markdown AzureMLServerless data extractor is not implemented.");
+                        "Vision-based AzureMLServerless data extractor is not implemented.");
                 break;
             default:
                 throw new InvalidOperationException("Invalid endpoint type.");
@@ -98,17 +106,11 @@ public abstract class ExtractionTests<TData>
         return dataExtractor;
     }
 
-    public async Task SaveResultAsync<TResult>(string name, TResult result)
+    public async Task SaveResultAsync<TResult>(TResult result)
         where TResult : ExtractionTestCaseResult
     {
-        if (!Directory.Exists("Output"))
-        {
-            Directory.CreateDirectory("Output");
-        }
-
-        var fileName = $"Output/{name}-{DateTime.UtcNow.ToString("yy-MM-dd", CultureInfo.InvariantCulture)}.json";
-
-        await File.WriteAllTextAsync(fileName, JsonSerializer.Serialize(result, _indentSerializerSettings));
+        await _outputStorage.SaveJsonAsync(result,
+            $"{DateTime.UtcNow.ToString("yy-MM-dd", CultureInfo.InvariantCulture)}.Result.json");
     }
 
     public record ExtractionTestCase(

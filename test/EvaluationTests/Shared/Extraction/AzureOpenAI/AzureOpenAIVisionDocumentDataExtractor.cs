@@ -1,16 +1,20 @@
+using System.Globalization;
 using Azure.AI.OpenAI;
+using EvaluationTests.Shared.Storage;
 using SkiaSharp;
 
 namespace EvaluationTests.Shared.Extraction.AzureOpenAI;
 
 public class AzureOpenAIVisionDocumentDataExtractor(
     OpenAIClient client,
-    ChatCompletionsOptions chatCompletionOptions) :
+    ChatCompletionsOptions chatCompletionOptions,
+    TestOutputStorage? outputStorage = null) :
     AzureOpenAIDocumentDataExtractor(client, chatCompletionOptions)
 {
-    public override async Task<DataExtractionResult> FromDocumentBytesAsync(byte[] documentBytes, CancellationToken cancellationToken = default)
+    public override async Task<DataExtractionResult> FromDocumentBytesAsync(byte[] documentBytes,
+        CancellationToken cancellationToken = default)
     {
-        var images = ToProcessedImages(documentBytes);
+        var images = await ToProcessedImages(documentBytes);
 
         var imagePromptItems = new List<ChatMessageContentItem>();
         imagePromptItems.AddRange(images.Select(image =>
@@ -19,7 +23,7 @@ public class AzureOpenAIVisionDocumentDataExtractor(
         return await GetChatCompletionsAsync(new ChatRequestUserMessage(imagePromptItems.ToArray()));
     }
 
-    private static IEnumerable<byte[]> ToProcessedImages(byte[] documentBytes)
+    private async Task<IEnumerable<byte[]>> ToProcessedImages(byte[] documentBytes)
     {
         var pageImages = PDFtoImage.Conversion.ToImages(documentBytes);
 
@@ -56,6 +60,17 @@ public class AzureOpenAIVisionDocumentDataExtractor(
             var stitchedImageStream = new MemoryStream();
             stitchedImage.Encode(stitchedImageStream, SKEncodedImageFormat.Jpeg, 100);
             pdfImageFiles.Add(stitchedImageStream.ToArray());
+        }
+
+        if (outputStorage == null)
+        {
+            return pdfImageFiles;
+        }
+
+        for (var i = 0; i < pdfImageFiles.Count; i++)
+        {
+            await outputStorage.SaveBytesAsync(pdfImageFiles[i],
+                $"{DateTime.UtcNow.ToString("yy-MM-dd", CultureInfo.InvariantCulture)}.Page-{i}.jpg");
         }
 
         return pdfImageFiles;
