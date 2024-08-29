@@ -36,6 +36,11 @@ else {
     $InfrastructureOutputs = Get-Content -Path './infra/InfrastructureOutputs.json' -Raw | ConvertFrom-Json
 }
 
+if (-not $InfrastructureOutputs) {
+    Write-Error "Infrastructure deployment outputs are not available. Exiting..."
+    exit 1
+}
+
 $KeyVaultName = $InfrastructureOutputs.keyVaultInfo.value.name
 
 ## Update the Key Vault firewall rules with the current IP address
@@ -50,9 +55,8 @@ $Gpt4ModelEndpoint = $InfrastructureOutputs.aiModelsInfo.value.gpt4Turbo.endpoin
 $Gpt4ModelDeploymentName = $InfrastructureOutputs.aiModelsInfo.value.gpt4Turbo.deploymentName
 $Gpt4OmniModelEndpoint = $InfrastructureOutputs.aiModelsInfo.value.gpt4Omni.endpoint
 $Gpt4OmniModelDeploymentName = $InfrastructureOutputs.aiModelsInfo.value.gpt4Omni.deploymentName
-$Phi3MiniModelEndpoint = $InfrastructureOutputs.aiModelsInfo.value.phi3Mini.endpoint
-$Phi3MiniModelDeploymentPrimaryKeySecretName = $InfrastructureOutputs.aiModelsInfo.value.phi3Mini.primaryKeySecretName
-$Phi3MiniModelDeploymentPrimaryKey = (az keyvault secret show --vault-name $KeyVaultName --name $Phi3MiniModelDeploymentPrimaryKeySecretName --query value -o tsv)
+$Gpt4OmniMiniModelEndpoint = $InfrastructureOutputs.aiModelsInfo.value.gpt4OmniMini.endpoint
+$Gpt4OmniMiniModelDeploymentName = $InfrastructureOutputs.aiModelsInfo.value.gpt4OmniMini.deploymentName
 
 Write-Host "Updating test/EvaluationTests/appsettings.Test.json settings..."
 
@@ -65,8 +69,27 @@ $Configuration.GPT4Turbo.Endpoint = $Gpt4ModelEndpoint
 $Configuration.GPT4Turbo.DeploymentName = $Gpt4ModelDeploymentName
 $Configuration.GPT4Omni.Endpoint = $Gpt4OmniModelEndpoint
 $Configuration.GPT4Omni.DeploymentName = $Gpt4OmniModelDeploymentName
-$Configuration.Phi3Mini128kInstruct.Endpoint = $Phi3MiniModelEndpoint
-$Configuration.Phi3Mini128kInstruct.ApiKey = $Phi3MiniModelDeploymentPrimaryKey
+$Configuration.GPT4OmniMini.Endpoint = $Gpt4OmniMiniModelEndpoint
+$Configuration.GPT4OmniMini.DeploymentName = $Gpt4OmniMiniModelDeploymentName
+
+if ($InfrastructureOutputs.aiModelsInfo.value.phi3Mini) {
+    $Phi3MiniModelEndpoint = $InfrastructureOutputs.aiModelsInfo.value.phi3Mini.endpoint
+    $Phi3MiniModelDeploymentPrimaryKeySecretName = $InfrastructureOutputs.aiModelsInfo.value.phi3Mini.primaryKeySecretName
+    $Phi3MiniModelDeploymentPrimaryKey = (az keyvault secret show --vault-name $KeyVaultName --name $Phi3MiniModelDeploymentPrimaryKeySecretName --query value -o tsv)
+
+    $Configuration.Phi3Mini128kInstruct.Endpoint = $Phi3MiniModelEndpoint
+    $Configuration.Phi3Mini128kInstruct.ApiKey = $Phi3MiniModelDeploymentPrimaryKey
+}
+
+if ($InfrastructureOutputs.aiModelsInfo.value.phi35Mini) {
+    $Phi35MiniModelEndpoint = $InfrastructureOutputs.aiModelsInfo.value.phi35Mini.endpoint
+    $Phi35MiniModelDeploymentPrimaryKeySecretName = $InfrastructureOutputs.aiModelsInfo.value.phi35Mini.primaryKeySecretName
+    $Phi35MiniModelDeploymentPrimaryKey = (az keyvault secret show --vault-name $KeyVaultName --name $Phi35MiniModelDeploymentPrimaryKeySecretName --query value -o tsv)
+
+    $Configuration.Phi35MiniInstruct.Endpoint = $Phi35MiniModelEndpoint
+    $Configuration.Phi35MiniInstruct.ApiKey = $Phi35MiniModelDeploymentPrimaryKey
+}
+
 $Configuration | ConvertTo-Json -Depth 100 | Set-Content -Path $ConfigurationFile
 
 Pop-Location

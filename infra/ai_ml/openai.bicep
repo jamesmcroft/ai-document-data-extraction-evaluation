@@ -45,7 +45,7 @@ param disableLocalAuth bool = true
 @description('Role assignments to create for the OpenAI resource.')
 param roleAssignments roleAssignmentInfo[] = []
 
-resource openAI 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' = {
+resource openAI 'Microsoft.CognitiveServices/accounts@2024-04-01-preview' = {
   name: name
   location: location
   tags: tags
@@ -66,20 +66,18 @@ resource openAI 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' = {
 }
 
 @batchSize(1)
-resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2023-10-01-preview' = [
+resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2024-04-01-preview' = [
   for deployment in deployments: {
     parent: openAI
     name: deployment.name
     properties: {
-      model: contains(deployment, 'model') ? deployment.model : null
-      raiPolicyName: contains(deployment, 'raiPolicyName') ? deployment.raiPolicyName : null
+      model: deployment.?model ?? null
+      raiPolicyName: deployment.?raiPolicyName ?? null
     }
-    sku: contains(deployment, 'sku')
-      ? deployment.sku
-      : {
-          name: 'Standard'
-          capacity: 20
-        }
+    sku: deployment.?sku ?? {
+      name: 'Standard'
+      capacity: 20
+    }
   }
 ]
 

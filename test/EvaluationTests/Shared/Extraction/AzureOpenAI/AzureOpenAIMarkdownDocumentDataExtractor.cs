@@ -11,7 +11,7 @@ public class AzureOpenAIMarkdownDocumentDataExtractor(
     ChatCompletionsOptions chatCompletionOptions,
     IDocumentMarkdownConverter markdownConverter,
     TestOutputStorage? outputStorage = null)
-    : AzureOpenAIDocumentDataExtractor(client, chatCompletionOptions)
+    : AzureOpenAIDocumentDataExtractor(client, chatCompletionOptions, outputStorage)
 {
     public override async Task<DataExtractionResult> FromDocumentBytesAsync(
         byte[] documentBytes,
@@ -25,9 +25,9 @@ public class AzureOpenAIMarkdownDocumentDataExtractor(
             return result;
         }
 
-        if (outputStorage != null)
+        if (OutputStorage != null)
         {
-            await outputStorage.SaveBytesAsync(markdownContent,
+            await OutputStorage.SaveBytesAsync(markdownContent,
                 $"{DateTime.UtcNow.ToString("yy-MM-dd", CultureInfo.InvariantCulture)}.Markdown.md");
         }
 

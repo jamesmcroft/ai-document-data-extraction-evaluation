@@ -1,3 +1,5 @@
+import { raiPolicyInfo } from './ai_ml/ai-services.bicep'
+
 targetScope = 'subscription'
 
 @minLength(1)
@@ -25,7 +27,12 @@ var abbrs = loadJsonContent('./abbreviations.json')
 var roles = loadJsonContent('./roles.json')
 var resourceToken = toLower(uniqueString(subscription().id, workloadName, location))
 
-resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
+resource contributor 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' existing = {
+  scope: resourceGroup
+  name: roles.general.contributor
+}
+
+resource resourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: !empty(resourceGroupName) ? resourceGroupName : '${abbrs.managementGovernance.resourceGroup}${workloadName}'
   location: location
   tags: union(tags, {})
@@ -39,11 +46,6 @@ module managedIdentity './security/managed-identity.bicep' = {
     location: location
     tags: union(tags, {})
   }
-}
-
-resource contributor 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
-  scope: resourceGroup
-  name: roles.general.contributor
 }
 
 module resouceGroupRoleAssignment './security/resource-group-role-assignment.bicep' = {
@@ -65,44 +67,24 @@ module resouceGroupRoleAssignment './security/resource-group-role-assignment.bic
   }
 }
 
-resource cognitiveServicesUser 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+resource storageAccountContributor 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' existing = {
   scope: resourceGroup
-  name: roles.ai.cognitiveServicesUser
+  name: roles.storage.storageAccountContributor
 }
 
-@description('Location for Document Intelligence preview features (requires 2024-02-29-preview).')
-var documentIntelligenceLocation = 'westeurope'
-var documentIntelligenceResourceToken = toLower(uniqueString(
-  subscription().id,
-  workloadName,
-  documentIntelligenceLocation
-))
-
-module documentIntelligence './ai_ml/document-intelligence.bicep' = {
-  name: '${abbrs.ai.documentIntelligence}${documentIntelligenceResourceToken}'
-  scope: resourceGroup
-  params: {
-    name: '${abbrs.ai.documentIntelligence}${documentIntelligenceResourceToken}'
-    location: documentIntelligenceLocation
-    tags: union(tags, {})
-    roleAssignments: [
-      {
-        principalId: userPrincipalId
-        roleDefinitionId: cognitiveServicesUser.id
-        principalType: 'User'
-      }
-      {
-        principalId: managedIdentity.outputs.principalId
-        roleDefinitionId: cognitiveServicesUser.id
-        principalType: 'ServicePrincipal'
-      }
-    ]
-  }
-}
-
-resource storageBlobDataContributor 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+resource storageBlobDataContributor 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' existing = {
   scope: resourceGroup
   name: roles.storage.storageBlobDataContributor
+}
+
+resource storageFileDataPrivilegedContributor 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' existing = {
+  scope: resourceGroup
+  name: roles.storage.storageFileDataPrivilegedContributor
+}
+
+resource storageTableDataContributor 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' existing = {
+  scope: resourceGroup
+  name: roles.storage.storageTableDataContributor
 }
 
 module storageAccount './storage/storage-account.bicep' = {
@@ -118,24 +100,49 @@ module storageAccount './storage/storage-account.bicep' = {
     roleAssignments: [
       {
         principalId: userPrincipalId
-        roleDefinitionId: storageBlobDataContributor.id
+        roleDefinitionId: storageAccountContributor.id
         principalType: 'User'
       }
       {
-        principalId: documentIntelligence.outputs.identityPrincipalId
-        roleDefinitionId: storageBlobDataContributor.id
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: storageAccountContributor.id
         principalType: 'ServicePrincipal'
+      }
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: storageBlobDataContributor.id
+        principalType: 'User'
       }
       {
         principalId: managedIdentity.outputs.principalId
         roleDefinitionId: storageBlobDataContributor.id
         principalType: 'ServicePrincipal'
       }
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: storageFileDataPrivilegedContributor.id
+        principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: storageFileDataPrivilegedContributor.id
+        principalType: 'ServicePrincipal'
+      }
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: storageTableDataContributor.id
+        principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: storageTableDataContributor.id
+        principalType: 'ServicePrincipal'
+      }
     ]
   }
 }
 
-resource keyVaultAdministrator 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+resource keyVaultAdministrator 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' existing = {
   scope: resourceGroup
   name: roles.security.keyVaultAdministrator
 }
@@ -229,27 +236,87 @@ module containerRegistry './containers/container-registry.bicep' = {
   }
 }
 
-resource cognitiveServicesOpenAIContributor 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+resource cognitiveServicesUser 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: resourceGroup
+  name: roles.ai.cognitiveServicesUser
+}
+
+@description('Location for Document Intelligence preview features (requires 2024-02-29-preview).')
+var documentIntelligenceLocation = 'westeurope'
+var documentIntelligenceResourceToken = toLower(uniqueString(
+  subscription().id,
+  workloadName,
+  documentIntelligenceLocation
+))
+
+module documentIntelligence './ai_ml/document-intelligence.bicep' = {
+  name: '${abbrs.ai.documentIntelligence}${documentIntelligenceResourceToken}'
+  scope: resourceGroup
+  params: {
+    name: '${abbrs.ai.documentIntelligence}${documentIntelligenceResourceToken}'
+    location: documentIntelligenceLocation
+    tags: union(tags, {})
+    roleAssignments: [
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: cognitiveServicesUser.id
+        principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: cognitiveServicesUser.id
+        principalType: 'ServicePrincipal'
+      }
+    ]
+  }
+}
+
+resource cognitiveServicesContributor 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' existing = {
+  scope: resourceGroup
+  name: roles.ai.cognitiveServicesContributor
+}
+
+resource cognitiveServicesOpenAIContributor 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' existing = {
   scope: resourceGroup
   name: roles.ai.cognitiveServicesOpenAIContributor
 }
 
-@description('Location for Azure AI service that will be linked to the AI Hub (requires gpt-35-turbo 1106, gpt-4o 2024-05-13, gpt-4 turbo-2024-04-09).')
-var primaryAIServiceLocation = 'swedencentral'
-var primaryAIServiceResourceToken = toLower(uniqueString(subscription().id, workloadName, primaryAIServiceLocation))
-
+var gpt4OmniMiniModelDeploymentName = 'gpt-4o-mini'
 var gpt4OmniModelDeploymentName = 'gpt-4o'
 var gpt4ModelDeploymentName = 'gpt-4'
 var gpt35ModelDeploymentName = 'gpt-35-turbo'
 
-module primaryAIServices './ai_ml/ai-services.bicep' = {
-  name: '${abbrs.ai.aiServices}${primaryAIServiceResourceToken}'
+module aiServices './ai_ml/ai-services.bicep' = {
+  name: '${abbrs.ai.aiServices}${resourceToken}'
   scope: resourceGroup
   params: {
-    name: '${abbrs.ai.aiServices}${primaryAIServiceResourceToken}'
-    location: primaryAIServiceLocation
+    name: '${abbrs.ai.aiServices}${resourceToken}'
+    location: location
     tags: union(tags, {})
+    identityId: managedIdentity.outputs.id
+    raiPolicies: [
+      {
+        name: workloadName
+        mode: 'Blocking'
+        prompt: {}
+        completion: {}
+      }
+    ]
     deployments: [
+      {
+        name: gpt4OmniMiniModelDeploymentName
+        model: {
+          format: 'OpenAI'
+          name: 'gpt-4o-mini'
+          version: '2024-07-18'
+        }
+        sku: {
+          name: 'GlobalStandard'
+          capacity: 10
+        }
+        raiPolicyName: workloadName
+        versionUpgradeOption: 'OnceCurrentVersionExpired'
+      }
       {
         name: gpt4OmniModelDeploymentName
         model: {
@@ -258,9 +325,11 @@ module primaryAIServices './ai_ml/ai-services.bicep' = {
           version: '2024-05-13'
         }
         sku: {
-          name: 'Standard'
+          name: 'GlobalStandard'
           capacity: 10
         }
+        raiPolicyName: workloadName
+        versionUpgradeOption: 'OnceCurrentVersionExpired'
       }
       {
         name: gpt4ModelDeploymentName
@@ -270,24 +339,38 @@ module primaryAIServices './ai_ml/ai-services.bicep' = {
           version: 'turbo-2024-04-09'
         }
         sku: {
-          name: 'Standard'
-          capacity: 10
+          name: 'GlobalStandard'
+          capacity: 8
         }
+        raiPolicyName: workloadName
+        versionUpgradeOption: 'OnceCurrentVersionExpired'
       }
       {
         name: gpt35ModelDeploymentName
         model: {
           format: 'OpenAI'
           name: 'gpt-35-turbo'
-          version: '1106'
+          version: '0613'
         }
         sku: {
           name: 'Standard'
           capacity: 10
         }
+        raiPolicyName: workloadName
+        versionUpgradeOption: 'OnceCurrentVersionExpired'
       }
     ]
     roleAssignments: [
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: cognitiveServicesContributor.id
+        principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: cognitiveServicesContributor.id
+        principalType: 'ServicePrincipal'
+      }
       {
         principalId: userPrincipalId
         roleDefinitionId: cognitiveServicesOpenAIContributor.id
@@ -302,43 +385,89 @@ module primaryAIServices './ai_ml/ai-services.bicep' = {
   }
 }
 
+resource azureMLDataScientist 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' existing = {
+  scope: resourceGroup
+  name: roles.ai.azureMLDataScientist
+}
+
 module aiHub './ai_ml/ai-hub.bicep' = {
-  name: '${abbrs.ai.aiHub}${primaryAIServiceResourceToken}'
+  name: '${abbrs.ai.aiHub}${resourceToken}'
   scope: resourceGroup
   params: {
-    name: '${abbrs.ai.aiHub}${primaryAIServiceResourceToken}'
-    location: primaryAIServiceLocation
+    name: '${abbrs.ai.aiHub}${resourceToken}'
+    friendlyName: 'Hub - Document Data Extraction Evaluation'
+    descriptionInfo: 'Generated by the Document Data Extraction Evaluation sample project'
+    location: location
     tags: union(tags, {})
     identityId: managedIdentity.outputs.id
     storageAccountId: storageAccount.outputs.id
     keyVaultId: keyVault.outputs.id
     applicationInsightsId: applicationInsights.outputs.id
     containerRegistryId: containerRegistry.outputs.id
-    aiServicesName: primaryAIServices.outputs.name
+    aiServicesName: aiServices.outputs.name
+    roleAssignments: [
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: azureMLDataScientist.id
+        principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: azureMLDataScientist.id
+        principalType: 'ServicePrincipal'
+      }
+    ]
   }
 }
 
-var phi3MiniModelDeploymentName = 'phi-3-mini-128k-${primaryAIServiceResourceToken}'
+var phi3MiniModelDeploymentName = 'phi-3-mini-128k-${resourceToken}'
+var phi35MiniModelDeploymentName = 'phi-35-mini-${resourceToken}'
 
 module aiHubProject './ai_ml/ai-hub-project.bicep' = {
   name: '${abbrs.ai.aiHubProject}${workloadName}'
   scope: resourceGroup
   params: {
     name: '${abbrs.ai.aiHubProject}${workloadName}'
-    location: primaryAIServiceLocation
+    friendlyName: 'Project - Document Data Extraction Evaluation'
+    descriptionInfo: 'Generated by the Document Data Extraction Evaluation sample project'
+    location: location
     tags: union(tags, {})
+    identityId: managedIdentity.outputs.id
     aiHubName: aiHub.outputs.name
     serverlessModels: [
+      // {
+      //   name: phi3MiniModelDeploymentName
+      //   model: {
+      //     name: 'Phi-3-mini-128k-instruct'
+      //   }
+      //   keyVaultConfig: {
+      //     name: keyVault.outputs.name
+      //     primaryKeySecretName: 'Phi-3-mini-128k-instruct-PrimaryKey'
+      //     secondaryKeySecretName: 'Phi-3-mini-128k-instruct-SecondaryKey'
+      //   }
+      // }
       {
-        name: phi3MiniModelDeploymentName
+        name: phi35MiniModelDeploymentName
         model: {
-          name: 'Phi-3-mini-128k-instruct'
+          name: 'Phi-35-mini-instruct'
         }
         keyVaultConfig: {
           name: keyVault.outputs.name
-          primaryKeySecretName: 'Phi-3-mini-128k-instruct-PrimaryKey'
-          secondaryKeySecretName: 'Phi-3-mini-128k-instruct-SecondaryKey'
+          primaryKeySecretName: 'Phi-35-mini-instruct-PrimaryKey'
+          secondaryKeySecretName: 'Phi-35-mini-instruct-SecondaryKey'
         }
+      }
+    ]
+    roleAssignments: [
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: azureMLDataScientist.id
+        principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: azureMLDataScientist.id
+        principalType: 'ServicePrincipal'
       }
     ]
   }
@@ -372,18 +501,27 @@ output documentIntelligenceInfo object = {
 
 output aiModelsInfo object = {
   gpt35Turbo: {
-    endpoint: primaryAIServices.outputs.endpoint
+    endpoint: aiServices.outputs.openAIEndpoint
     deploymentName: gpt35ModelDeploymentName
   }
   gpt4Turbo: {
-    endpoint: primaryAIServices.outputs.endpoint
+    endpoint: aiServices.outputs.openAIEndpoint
     deploymentName: gpt4ModelDeploymentName
   }
   gpt4Omni: {
-    endpoint: primaryAIServices.outputs.endpoint
+    endpoint: aiServices.outputs.openAIEndpoint
     deploymentName: gpt4OmniModelDeploymentName
   }
-  phi3Mini: {
+  gpt4OmniMini: {
+    endpoint: aiServices.outputs.openAIEndpoint
+    deploymentName: gpt4OmniMiniModelDeploymentName
+  }
+  // phi3Mini: {
+  //   endpoint: aiHubProject.outputs.serverlessModelDeployments[0].endpoint
+  //   primaryKeySecretName: aiHubProject.outputs.serverlessModelDeployments[0].primaryKeySecretName
+  //   secondaryKeySecretName: aiHubProject.outputs.serverlessModelDeployments[0].secondaryKeySecretName
+  // }
+  phi35Mini: {
     endpoint: aiHubProject.outputs.serverlessModelDeployments[0].endpoint
     primaryKeySecretName: aiHubProject.outputs.serverlessModelDeployments[0].primaryKeySecretName
     secondaryKeySecretName: aiHubProject.outputs.serverlessModelDeployments[0].secondaryKeySecretName

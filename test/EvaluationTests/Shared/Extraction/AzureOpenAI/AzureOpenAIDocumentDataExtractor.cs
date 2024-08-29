@@ -1,12 +1,16 @@
 using Azure.AI.OpenAI;
+using EvaluationTests.Shared.Storage;
 
 namespace EvaluationTests.Shared.Extraction.AzureOpenAI;
 
 public abstract class AzureOpenAIDocumentDataExtractor(
     OpenAIClient client,
-    ChatCompletionsOptions chatCompletionOptions)
+    ChatCompletionsOptions chatCompletionOptions,
+    TestOutputStorage? outputStorage = null)
     : IDocumentDataExtractor
 {
+    protected TestOutputStorage? OutputStorage => outputStorage;
+
     public abstract Task<DataExtractionResult> FromDocumentBytesAsync(
         byte[] documentBytes,
         CancellationToken cancellationToken = default);

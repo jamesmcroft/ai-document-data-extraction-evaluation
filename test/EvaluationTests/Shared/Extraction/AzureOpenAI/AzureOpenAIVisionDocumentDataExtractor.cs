@@ -9,7 +9,7 @@ public class AzureOpenAIVisionDocumentDataExtractor(
     OpenAIClient client,
     ChatCompletionsOptions chatCompletionOptions,
     TestOutputStorage? outputStorage = null) :
-    AzureOpenAIDocumentDataExtractor(client, chatCompletionOptions)
+    AzureOpenAIDocumentDataExtractor(client, chatCompletionOptions, outputStorage)
 {
     public override async Task<DataExtractionResult> FromDocumentBytesAsync(byte[] documentBytes,
         CancellationToken cancellationToken = default)
@@ -29,8 +29,8 @@ public class AzureOpenAIVisionDocumentDataExtractor(
 
         var totalPageCount = pageImages.Count();
 
-        // If there are more than 10 pages, we need to stitch images together so that the total number of pages is less than or equal to 10 for the OpenAI API.
-        var maxSize = (int)Math.Ceiling(totalPageCount / 10.0);
+        // Group images if the total page count is too large.
+        var maxSize = (int)Math.Ceiling(totalPageCount / 25.0);
 
         var pageImageGroups = new List<List<SKBitmap>>();
 
@@ -42,7 +42,7 @@ public class AzureOpenAIVisionDocumentDataExtractor(
 
         var pdfImageFiles = new List<byte[]>();
 
-        // Stitch images together if they have been grouped. This should result in a total of 10 or fewer images in the list.
+        // Stitch images together if they have been grouped.
         foreach (var pageImageGroup in pageImageGroups)
         {
             var totalHeight = pageImageGroup.Sum(image => image.Height);
@@ -62,14 +62,14 @@ public class AzureOpenAIVisionDocumentDataExtractor(
             pdfImageFiles.Add(stitchedImageStream.ToArray());
         }
 
-        if (outputStorage == null)
+        if (OutputStorage == null)
         {
             return pdfImageFiles;
         }
 
         for (var i = 0; i < pdfImageFiles.Count; i++)
         {
-            await outputStorage.SaveBytesAsync(pdfImageFiles[i],
+            await OutputStorage.SaveBytesAsync(pdfImageFiles[i],
                 $"{DateTime.UtcNow.ToString("yy-MM-dd", CultureInfo.InvariantCulture)}.Page-{i}.jpg");
         }
 

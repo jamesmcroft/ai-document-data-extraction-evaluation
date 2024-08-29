@@ -16,7 +16,8 @@ public abstract class ExtractionTests<TData>
     private IConfigurationRoot _configuration;
     private EndpointSettings _documentIntelligenceSettings;
     private DefaultAzureCredential _defaultCredential;
-    private TestOutputStorage _outputStorage;
+
+    protected TestOutputStorage? OutputStorage { get; set; }
 
     public virtual void Initialize()
     {
@@ -32,7 +33,7 @@ public abstract class ExtractionTests<TData>
 
     public IDocumentDataExtractor GetDocumentDataExtractor(ExtractionTestCase extractionTest, bool outputDebug = false)
     {
-        _outputStorage = new TestOutputStorage(
+        OutputStorage = new TestOutputStorage(
             extractionTest.Name,
             extractionTest.EndpointSettingKey,
             extractionTest.AsMarkdown);
@@ -69,11 +70,11 @@ public abstract class ExtractionTests<TData>
                         openAIClient,
                         openAIOptions,
                         markdownConverter!,
-                        outputDebug ? _outputStorage : null)
+                        outputDebug ? OutputStorage : null)
                     : new AzureOpenAIVisionDocumentDataExtractor(
                         openAIClient,
                         openAIOptions,
-                        outputDebug ? _outputStorage : null);
+                        outputDebug ? OutputStorage : null);
                 break;
             case EndpointType.AzureMLServerless:
                 var azureMLClient =
@@ -95,7 +96,7 @@ public abstract class ExtractionTests<TData>
                         azureMLClient,
                         azureMLOptions,
                         markdownConverter!,
-                        outputDebug ? _outputStorage : null)
+                        outputDebug ? OutputStorage : null)
                     : throw new NotImplementedException(
                         "Vision-based AzureMLServerless data extractor is not implemented.");
                 break;
@@ -103,16 +104,37 @@ public abstract class ExtractionTests<TData>
                 throw new InvalidOperationException("Invalid endpoint type.");
         }
 
+        if (OutputStorage != null && outputDebug)
+        {
+            SaveTestAsync(extractionTest).ConfigureAwait(false);
+        }
+
         return dataExtractor;
+    }
+
+    public async Task SaveTestAsync(ExtractionTestCase testCase)
+    {
+        await OutputStorage.SaveJsonAsync(testCase,
+            $"{DateTime.UtcNow.ToString("yy-MM-dd", CultureInfo.InvariantCulture)}.Test.json");
     }
 
     public async Task SaveResultAsync<TResult>(TResult result)
         where TResult : ExtractionTestCaseResult
     {
-        await _outputStorage.SaveJsonAsync(result,
+        await OutputStorage.SaveJsonAsync(result,
             $"{DateTime.UtcNow.ToString("yy-MM-dd", CultureInfo.InvariantCulture)}.Result.json");
     }
 
+    /// <summary>
+    /// Defines a test case for data extraction.
+    /// </summary>
+    /// <param name="Name">The name of the test case, for reference.</param>
+    /// <param name="EndpointType">The type of endpoint being used (Azure OpenAI, or Azure AI Studio Serverless).</param>
+    /// <param name="EndpointSettingKey">The key associated with the appsettings.json configuration to use for the test.</param>
+    /// <param name="ModelConfig">The configuration for the request to the endpoint for data extraction.</param>
+    /// <param name="FileBytes">The bytes of the file being processed.</param>
+    /// <param name="AsMarkdown">A value indicating whether to use Azure AI Document Intelligence prebuilt-layout to Markdown feature, or to use the vision capabilities of the supplied model (e.g., GPT-4o, GPT-4-Turbo).</param>
+    /// <param name="ExpectedData">The object containing the expected data output to compare for evaluation purposes.</param>
     public record ExtractionTestCase(
         string Name,
         EndpointType EndpointType,

@@ -20,7 +20,7 @@ type keyVaultConfigInfo = {
 @description('Serverless model information for serverless endpoint deployments.')
 type serverlessModelInfo = {
   @description('Name of the model. The model ID will be determined by the template.')
-  name: 'Phi-3-mini-128k-instruct' | null
+  name: string?
   @description('Model ID. Optional override if the expected model name is not supported. Value may start with azureml://.')
   id: string?
 }
@@ -61,7 +61,7 @@ param keyVaultConfig keyVaultConfigInfo?
 var models = loadJsonContent('./models.json')
 var modelId = contains(model, 'id') ? model.id! : models.serverless[model.name!]
 
-resource aiHubProject 'Microsoft.MachineLearningServices/workspaces@2024-04-01-preview' existing = {
+resource aiHub 'Microsoft.MachineLearningServices/workspaces@2024-04-01-preview' existing = {
   name: aiHubName
 }
 
@@ -69,7 +69,7 @@ resource modelServerlessEndpoint 'Microsoft.MachineLearningServices/workspaces/s
   name: name
   location: location
   tags: tags
-  parent: aiHubProject
+  parent: aiHub
   sku: {
     name: 'Consumption'
   }

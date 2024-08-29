@@ -22,7 +22,7 @@ param disableLocalAuth bool = true
 @description('Role assignments to create for the Document Intelligence instance.')
 param roleAssignments roleAssignmentInfo[] = []
 
-resource documentIntelligence 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' = {
+resource documentIntelligence 'Microsoft.CognitiveServices/accounts@2024-04-01-preview' = {
   name: name
   location: location
   tags: tags
@@ -66,4 +66,4 @@ output endpoint string = documentIntelligence.properties.endpoint
 @description('Host for the deployed Document Intelligence resource.')
 output host string = split(documentIntelligence.properties.endpoint, '/')[2]
 @description('Identity principal ID for the deployed Document Intelligence resource.')
-output identityPrincipalId string = documentIntelligence.identity.principalId
+output systemIdentityPrincipalId string = documentIntelligence.identity.principalId

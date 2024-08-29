@@ -17,11 +17,11 @@ public class VehicleInsuranceContractDataExtractionTests
         base.Initialize();
     }
 
-    [TestCaseSource(nameof(TestCases)), Timeout(180000)]
+    [TestCaseSource(nameof(TestCases)), CancelAfter(180000)]
     public async Task Extract(ExtractionTestCase test)
     {
         // Arrange
-        var dataExtractor = GetDocumentDataExtractor(test);
+        var dataExtractor = GetDocumentDataExtractor(test, true);
 
         var stopwatch = new Stopwatch();
         stopwatch.Start();
@@ -221,7 +221,9 @@ public class VehicleInsuranceContractDataExtractionTests
             accuracy.AccidentExcess = expectedData.AccidentExcess is null
                 ? new VehicleInsuranceContractDataAccuracy.ExcessDetailsAccuracy
                 {
-                    Compulsory = 1, Voluntary = 1, UnapprovedRepairerPenalty = 1
+                    Compulsory = 1,
+                    Voluntary = 1,
+                    UnapprovedRepairerPenalty = 1
                 }
                 : new VehicleInsuranceContractDataAccuracy.ExcessDetailsAccuracy();
         }
@@ -255,7 +257,9 @@ public class VehicleInsuranceContractDataExtractionTests
             accuracy.FireAndTheftExcess = expectedData.FireAndTheftExcess is null
                 ? new VehicleInsuranceContractDataAccuracy.ExcessDetailsAccuracy
                 {
-                    Compulsory = 1, Voluntary = 1, UnapprovedRepairerPenalty = 1
+                    Compulsory = 1,
+                    Voluntary = 1,
+                    UnapprovedRepairerPenalty = 1
                 }
                 : new VehicleInsuranceContractDataAccuracy.ExcessDetailsAccuracy();
         }
@@ -290,7 +294,7 @@ public class VehicleInsuranceContractDataExtractionTests
 
     public static ExtractionTestCase[] TestCases()
     {
-        return InsurancePolicyInference().ToArray();
+        return InsurancePolicyInference();
     }
 
     private static ExtractionTestCase[] InsurancePolicyInference()
@@ -301,6 +305,8 @@ public class VehicleInsuranceContractDataExtractionTests
             "You are an AI assistant that extracts data from documents and returns them as structured JSON objects. Do not return as a code block.";
         var extractPrompt =
             $"Extract the data from this contract using the provided JSON structure only. Only provide values for the fields in the structure. If a value is not present, provide null. Values in the structure may be inferred based on other values and rules defined in the text. Use the following structure: {JsonSerializer.Serialize(VehicleInsuranceContractData.Empty)}";
+        const float temperature = 0.1f;
+        const float topP = 0.1f;
 
         var fileBytes = File.ReadAllBytes(Path.Combine("Assets", "Contracts", "Simple.pdf"));
         var expectedOutput = new VehicleInsuranceContractData
@@ -344,12 +350,16 @@ public class VehicleInsuranceContractDataExtractionTests
             AccidentExcess =
                 new VehicleInsuranceContractData.ExcessDetails
                 {
-                    Compulsory = 250, Voluntary = 250, UnapprovedRepairPenalty = 250
+                    Compulsory = 250,
+                    Voluntary = 250,
+                    UnapprovedRepairPenalty = 250
                 },
             FireAndTheftExcess =
                 new VehicleInsuranceContractData.ExcessDetails
                 {
-                    Compulsory = 250, Voluntary = 250, UnapprovedRepairPenalty = 250
+                    Compulsory = 250,
+                    Voluntary = 250,
+                    UnapprovedRepairPenalty = 250
                 }
         };
 
@@ -362,22 +372,10 @@ public class VehicleInsuranceContractDataExtractionTests
                 new ExtractionTestCaseModelConfig(
                     systemPrompt,
                     extractPrompt,
-                    0.1f,
-                    0.1f),
+                    temperature,
+                    topP),
                 fileBytes,
-                true,
-                expectedOutput),
-            new ExtractionTestCase(
-                testName,
-                EndpointType.AzureOpenAI,
-                "GPT4Turbo",
-                new ExtractionTestCaseModelConfig(
-                    systemPrompt,
-                    extractPrompt,
-                    0.1f,
-                    0.1f),
-                fileBytes,
-                true,
+                AsMarkdown: true,
                 expectedOutput),
             new ExtractionTestCase(
                 testName,
@@ -386,22 +384,22 @@ public class VehicleInsuranceContractDataExtractionTests
                 new ExtractionTestCaseModelConfig(
                     systemPrompt,
                     extractPrompt,
-                    0.1f,
-                    0.1f),
+                    temperature,
+                    topP),
                 fileBytes,
-                true,
+                AsMarkdown: true,
                 expectedOutput),
             new ExtractionTestCase(
                 testName,
                 EndpointType.AzureOpenAI,
-                "GPT4Turbo",
+                "GPT4OmniMini",
                 new ExtractionTestCaseModelConfig(
                     systemPrompt,
                     extractPrompt,
-                    0.1f,
-                    0.1f),
+                    temperature,
+                    topP),
                 fileBytes,
-                false,
+                AsMarkdown: true,
                 expectedOutput),
             new ExtractionTestCase(
                 testName,
@@ -410,22 +408,34 @@ public class VehicleInsuranceContractDataExtractionTests
                 new ExtractionTestCaseModelConfig(
                     systemPrompt,
                     extractPrompt,
-                    0.1f,
-                    0.1f),
+                    temperature,
+                    topP),
                 fileBytes,
-                false,
+                AsMarkdown: false,
+                expectedOutput),
+            new ExtractionTestCase(
+                testName,
+                EndpointType.AzureOpenAI,
+                "GPT4OmniMini",
+                new ExtractionTestCaseModelConfig(
+                    systemPrompt,
+                    extractPrompt,
+                    temperature,
+                    topP),
+                fileBytes,
+                AsMarkdown: false,
                 expectedOutput),
             new ExtractionTestCase(
                 testName,
                 EndpointType.AzureMLServerless,
-                "Phi3Mini128kInstruct",
+                "Phi35MiniInstruct",
                 new ExtractionTestCaseModelConfig(
                     systemPrompt,
                     extractPrompt,
-                    0.1f,
-                    0.1f),
+                    temperature,
+                    topP),
                 fileBytes,
-                true,
+                AsMarkdown: true,
                 expectedOutput)
         ];
     }

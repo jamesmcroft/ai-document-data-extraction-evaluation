@@ -15,11 +15,11 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
         base.Initialize();
     }
 
-    [TestCaseSource(nameof(TestCases)), Timeout(180000)]
+    [TestCaseSource(nameof(TestCases)), CancelAfter(180000)]
     public async Task Extract(ExtractionTestCase test)
     {
         // Arrange
-        var dataExtractor = GetDocumentDataExtractor(test);
+        var dataExtractor = GetDocumentDataExtractor(test, true);
 
         var stopwatch = new Stopwatch();
         stopwatch.Start();
@@ -218,136 +218,9 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
         return accuracy;
     }
 
-
     public static ExtractionTestCase[] TestCases()
     {
-        return SimpleInvoice().Concat(ComplexInvoice()).ToArray();
-    }
-
-    private static ExtractionTestCase[] SimpleInvoice()
-    {
-        const string testName = nameof(SimpleInvoice);
-
-        const string systemPrompt =
-            "You are an AI assistant that extracts data from documents and returns them as structured JSON objects. Do not return as a code block.";
-        var extractPrompt =
-            $"Extract the data from this invoice. If a value is not present, provide null. Use the following structure: {JsonSerializer.Serialize(InvoiceData.Empty)}";
-
-        var fileBytes = File.ReadAllBytes(Path.Combine("Assets", "Invoices", "Simple.pdf"));
-        var expectedOutput = new InvoiceData
-        {
-            InvoiceNumber = "3847192",
-            PurchaseOrderNumber = "15931",
-            CustomerName = "Sharp Consulting",
-            CustomerAddress = "73 Regal Way, Leeds, LS1 5AB, UK",
-            DeliveryDate = new DateTime(2024, 5, 16),
-            PayableBy = DateTime.MinValue,
-            Products =
-                new List<InvoiceData.InvoiceDataProduct>
-                {
-                    new() { Id = "MA197", UnitPrice = 16.62, Quantity = 5, Total = 83.10 },
-                    new() { Id = "ST4086", UnitPrice = 2.49, Quantity = 10, Total = 24.90 },
-                    new() { Id = "JF9912413BF", UnitPrice = 15.46, Quantity = 12, Total = 185.52 }
-                },
-            Returns = new List<InvoiceData.InvoiceDataProduct>
-            {
-                new()
-                {
-                    Id = "MA145",
-                    Quantity = 1,
-                    Reason = "This item was provided in previous order as a replacement"
-                },
-                new() { Id = "JF7902", Quantity = 1, Reason = "Not required" }
-            },
-            TotalProductQuantity = 27,
-            TotalProductPrice = 293.52,
-            ProductsSignatures = new List<InvoiceData.InvoiceDataSignature>
-            {
-                new() { Type = "Customer", Name = "", IsSigned = false },
-                new() { Type = "Driver", Name = "James T", IsSigned = true }
-            },
-            ReturnsSignatures = new List<InvoiceData.InvoiceDataSignature>
-            {
-                new() { Type = "Customer", Name = "", IsSigned = false },
-                new() { Type = "Driver", Name = "James T", IsSigned = true }
-            }
-        };
-
-        return
-        [
-            new ExtractionTestCase(
-                testName,
-                EndpointType.AzureOpenAI,
-                "GPT35Turbo",
-                new ExtractionTestCaseModelConfig(
-                    systemPrompt,
-                    extractPrompt,
-                    0.1f,
-                    0.1f),
-                fileBytes,
-                true,
-                expectedOutput),
-            new ExtractionTestCase(
-                testName,
-                EndpointType.AzureOpenAI,
-                "GPT4Turbo",
-                new ExtractionTestCaseModelConfig(
-                    systemPrompt,
-                    extractPrompt,
-                    0.1f,
-                    0.1f),
-                fileBytes,
-                true,
-                expectedOutput),
-            new ExtractionTestCase(
-                testName,
-                EndpointType.AzureOpenAI,
-                "GPT4Omni",
-                new ExtractionTestCaseModelConfig(
-                    systemPrompt,
-                    extractPrompt,
-                    0.1f,
-                    0.1f),
-                fileBytes,
-                true,
-                expectedOutput),
-            new ExtractionTestCase(
-                testName,
-                EndpointType.AzureOpenAI,
-                "GPT4Turbo",
-                new ExtractionTestCaseModelConfig(
-                    systemPrompt,
-                    extractPrompt,
-                    0.1f,
-                    0.1f),
-                fileBytes,
-                false,
-                expectedOutput),
-            new ExtractionTestCase(
-                testName,
-                EndpointType.AzureOpenAI,
-                "GPT4Omni",
-                new ExtractionTestCaseModelConfig(
-                    systemPrompt,
-                    extractPrompt,
-                    0.1f,
-                    0.1f),
-                fileBytes,
-                false,
-                expectedOutput),
-            new ExtractionTestCase(
-                testName,
-                EndpointType.AzureMLServerless,
-                "Phi3Mini128kInstruct",
-                new ExtractionTestCaseModelConfig(
-                    systemPrompt,
-                    extractPrompt,
-                    0.1f,
-                    0.1f),
-                fileBytes,
-                true,
-                expectedOutput)
-        ];
+        return ComplexInvoice();
     }
 
     private static ExtractionTestCase[] ComplexInvoice()
@@ -358,6 +231,8 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
             "You are an AI assistant that extracts data from documents and returns them as structured JSON objects. Do not return as a code block.";
         var extractPrompt =
             $"Extract the data from this invoice. If a value is not present, provide null. Use the following structure: {JsonSerializer.Serialize(InvoiceData.Empty)}";
+        const float temperature = 0.1f;
+        const float topP = 0.1f;
 
         var fileBytes = File.ReadAllBytes(Path.Combine("Assets", "Invoices", "ComplexWithHandwriting.pdf"));
         var expectedOutput = new InvoiceData
@@ -430,22 +305,10 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
                 new ExtractionTestCaseModelConfig(
                     systemPrompt,
                     extractPrompt,
-                    0.1f,
-                    0.1f),
+                    temperature,
+                    topP),
                 fileBytes,
-                true,
-                expectedOutput),
-            new ExtractionTestCase(
-                testName,
-                EndpointType.AzureOpenAI,
-                "GPT4Turbo",
-                new ExtractionTestCaseModelConfig(
-                    systemPrompt,
-                    extractPrompt,
-                    0.1f,
-                    0.1f),
-                fileBytes,
-                true,
+                AsMarkdown: true,
                 expectedOutput),
             new ExtractionTestCase(
                 testName,
@@ -454,22 +317,22 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
                 new ExtractionTestCaseModelConfig(
                     systemPrompt,
                     extractPrompt,
-                    0.1f,
-                    0.1f),
+                    temperature,
+                    topP),
                 fileBytes,
-                true,
+                AsMarkdown: true,
                 expectedOutput),
             new ExtractionTestCase(
                 testName,
                 EndpointType.AzureOpenAI,
-                "GPT4Turbo",
+                "GPT4OmniMini",
                 new ExtractionTestCaseModelConfig(
                     systemPrompt,
                     extractPrompt,
-                    0.1f,
-                    0.1f),
+                    temperature,
+                    topP),
                 fileBytes,
-                false,
+                AsMarkdown: true,
                 expectedOutput),
             new ExtractionTestCase(
                 testName,
@@ -478,22 +341,34 @@ public class InvoiceDataExtractionTests : ExtractionTests<InvoiceData>
                 new ExtractionTestCaseModelConfig(
                     systemPrompt,
                     extractPrompt,
-                    0.1f,
-                    0.1f),
+                    temperature,
+                    topP),
                 fileBytes,
-                false,
+                AsMarkdown: false,
+                expectedOutput),
+            new ExtractionTestCase(
+                testName,
+                EndpointType.AzureOpenAI,
+                "GPT4OmniMini",
+                new ExtractionTestCaseModelConfig(
+                    systemPrompt,
+                    extractPrompt,
+                    temperature,
+                    topP),
+                fileBytes,
+                AsMarkdown: false,
                 expectedOutput),
             new ExtractionTestCase(
                 testName,
                 EndpointType.AzureMLServerless,
-                "Phi3Mini128kInstruct",
+                "Phi35MiniInstruct",
                 new ExtractionTestCaseModelConfig(
                     systemPrompt,
                     extractPrompt,
-                    0.1f,
-                    0.1f),
+                    temperature,
+                    topP),
                 fileBytes,
-                true,
+                AsMarkdown: true,
                 expectedOutput)
         ];
     }

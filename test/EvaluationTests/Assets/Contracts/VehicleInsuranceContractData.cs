@@ -34,28 +34,12 @@ public class VehicleInsuranceContractData
         Cost = new CostDetails
         {
             AnnualTotal = 0.0,
-            PayableByDate = DateTime.MinValue,
-            DocumentSectionCitations = new List<DocumentSectionCitation>
-            {
-                new()
-                {
-                    Page = string.Empty,
-                    Section = string.Empty
-                }
-            }
+            PayableByDate = DateTime.MinValue
         },
         Renewal = new RenewalDetails
         {
             RenewalNotificationDate = DateTime.MinValue,
-            RenewalDueDate = DateTime.MinValue,
-            DocumentSectionCitations = new List<DocumentSectionCitation>
-            {
-                new()
-                {
-                    Page = string.Empty,
-                    Section = string.Empty
-                }
-            }
+            RenewalDueDate = DateTime.MinValue
         },
         EffectiveFrom = DateTime.MinValue,
         EffectiveTo = DateTime.MinValue,
@@ -68,15 +52,7 @@ public class VehicleInsuranceContractData
             Address = string.Empty,
             EmailAddress = string.Empty,
             TotalYearsOfResidenceInUK = 0,
-            DrivingLicenseNumber = string.Empty,
-            DocumentSectionCitations = new List<DocumentSectionCitation>
-            {
-                new()
-                {
-                    Page = string.Empty,
-                    Section = string.Empty
-                }
-            }
+            DrivingLicenseNumber = string.Empty
         },
         Vehicle = new VehicleDetails
         {
@@ -84,43 +60,19 @@ public class VehicleInsuranceContractData
             Make = string.Empty,
             Model = string.Empty,
             Year = 2024,
-            Value = 0.0,
-            DocumentSectionCitations = new List<DocumentSectionCitation>
-            {
-                new()
-                {
-                    Page = string.Empty,
-                    Section = string.Empty
-                }
-            }
+            Value = 0.0
         },
         AccidentExcess = new ExcessDetails
         {
             Compulsory = 0.0,
             Voluntary = 0.0,
-            UnapprovedRepairPenalty = 0.0,
-            DocumentSectionCitations = new List<DocumentSectionCitation>
-            {
-                new()
-                {
-                    Page = string.Empty,
-                    Section = string.Empty
-                }
-            }
+            UnapprovedRepairPenalty = 0.0
         },
         FireAndTheftExcess = new ExcessDetails
         {
             Compulsory = 0.0,
             Voluntary = 0.0,
-            UnapprovedRepairPenalty = 0.0,
-            DocumentSectionCitations = new List<DocumentSectionCitation>
-            {
-                new()
-                {
-                    Page = string.Empty,
-                    Section = string.Empty
-                }
-            }
+            UnapprovedRepairPenalty = 0.0
         }
     };
 
@@ -130,6 +82,7 @@ public class VehicleInsuranceContractData
 
         public string? LastName { get; set; }
 
+        [JsonConverter(typeof(UtcDateTimeConverter))]
         public DateTime? DateOfBirth { get; set; }
 
         public string? Address { get; set; }
@@ -139,8 +92,6 @@ public class VehicleInsuranceContractData
         public int? TotalYearsOfResidenceInUK { get; set; }
 
         public string? DrivingLicenseNumber { get; set; }
-
-        public IEnumerable<DocumentSectionCitation>? DocumentSectionCitations { get; set; }
     }
 
     public class VehicleDetails
@@ -154,8 +105,6 @@ public class VehicleInsuranceContractData
         public int? Year { get; set; }
 
         public double? Value { get; set; }
-
-        public IEnumerable<DocumentSectionCitation>? DocumentSectionCitations { get; set; }
     }
 
     public class CostDetails
@@ -164,8 +113,6 @@ public class VehicleInsuranceContractData
 
         [JsonConverter(typeof(UtcDateTimeConverter))]
         public DateTime? PayableByDate { get; set; }
-
-        public IEnumerable<DocumentSectionCitation>? DocumentSectionCitations { get; set; }
     }
 
     public class RenewalDetails
@@ -175,8 +122,6 @@ public class VehicleInsuranceContractData
 
         [JsonConverter(typeof(UtcDateTimeConverter))]
         public DateTime? RenewalDueDate { get; set; }
-
-        public IEnumerable<DocumentSectionCitation>? DocumentSectionCitations { get; set; }
     }
 
     public class ExcessDetails
@@ -186,14 +131,5 @@ public class VehicleInsuranceContractData
         public double? Voluntary { get; set; }
 
         public double? UnapprovedRepairPenalty { get; set; }
-
-        public IEnumerable<DocumentSectionCitation>? DocumentSectionCitations { get; set; }
-    }
-
-    public class DocumentSectionCitation
-    {
-        public string? Page { get; set; }
-
-        public string? Section { get; set; }
     }
 }

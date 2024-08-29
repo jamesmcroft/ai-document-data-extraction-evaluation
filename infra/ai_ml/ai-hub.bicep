@@ -1,4 +1,6 @@
+import { roleAssignmentInfo } from '../security/managed-identity.bicep'
 import { serverlessModelDeploymentInfo, serverlessModelDeploymentOutputInfo } from './ai-hub-model-serverless-endpoint.bicep'
+import { connectionInfo } from 'ai-hub-connection.bicep'
 
 @description('Name of the resource.')
 param name string
@@ -7,6 +9,29 @@ param location string = resourceGroup().location
 @description('Tags for the resource.')
 param tags object = {}
 
+@description('Friendly name for the AI Hub.')
+param friendlyName string = name
+@description('Description for the AI Hub.')
+param descriptionInfo string = 'Azure AI Hub'
+@description('Isolation mode for the AI Hub.')
+@allowed([
+  'AllowInternetOutbound'
+  'AllowOnlyApprovedOutbound'
+  'Disabled'
+])
+param isolationMode string = 'Disabled'
+@description('Whether to enable public network access. Defaults to Enabled.')
+@allowed([
+  'Enabled'
+  'Disabled'
+])
+param publicNetworkAccess string = 'Enabled'
+@description('Whether or not to use credentials for the system datastores of the workspace. Defaults to identity.')
+@allowed([
+  'accessKey'
+  'identity'
+])
+param systemDatastoresAuthMode string = 'identity'
 @description('ID for the Storage Account associated with the AI Hub.')
 param storageAccountId string
 @description('ID for the Key Vault associated with the AI Hub.')
@@ -21,12 +46,16 @@ param identityId string?
 param aiServicesName string
 @description('Serverless model deployments for the AI Hub.')
 param serverlessModels serverlessModelDeploymentInfo[] = []
+@description('Resource connections associated with the AI Hub.')
+param connections connectionInfo[] = []
+@description('Role assignments to create for the AI Hub instance.')
+param roleAssignments roleAssignmentInfo[] = []
 
-resource aiServices 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' existing = {
+resource aiServices 'Microsoft.CognitiveServices/accounts@2024-04-01-preview' existing = {
   name: aiServicesName
 }
 
-resource aiHub 'Microsoft.MachineLearningServices/workspaces@2023-10-01' = {
+resource aiHub 'Microsoft.MachineLearningServices/workspaces@2024-04-01-preview' = {
   name: name
   location: location
   tags: tags
@@ -44,18 +73,24 @@ resource aiHub 'Microsoft.MachineLearningServices/workspaces@2023-10-01' = {
     tier: 'Basic'
   }
   properties: {
-    friendlyName: name
+    friendlyName: friendlyName
+    description: descriptionInfo
+    managedNetwork: {
+      isolationMode: isolationMode
+    }
+    publicNetworkAccess: publicNetworkAccess
     storageAccount: storageAccountId
     keyVault: keyVaultId
     applicationInsights: applicationInsightsId
     containerRegistry: containerRegistryId
+    systemDatastoresAuthMode: systemDatastoresAuthMode
     primaryUserAssignedIdentity: identityId
   }
 
-  resource aiServicesConnection 'connections@2024-01-01-preview' = {
-    name: '${name}-connection-AzureOpenAI'
+  resource aiServicesConnection 'connections@2024-04-01-preview' = {
+    name: '${aiServicesName}-connection'
     properties: {
-      category: 'AzureOpenAI'
+      category: 'AIServices'
       target: aiServices.properties.endpoint
       authType: 'AAD'
       isSharedToAll: true
@@ -67,6 +102,16 @@ resource aiHub 'Microsoft.MachineLearningServices/workspaces@2023-10-01' = {
   }
 }
 
+module aiHubConnections 'ai-hub-connection.bicep' = [
+  for connection in connections: {
+    name: connection.name
+    params: {
+      aiHubName: aiHub.name
+      connection: connection
+    }
+  }
+]
+
 module serverlessModelEndpoints 'ai-hub-model-serverless-endpoint.bicep' = [
   for serverlessModel in serverlessModels: {
     name: serverlessModel.name
@@ -75,6 +120,18 @@ module serverlessModelEndpoints 'ai-hub-model-serverless-endpoint.bicep' = [
       aiHubName: aiHub.name
       model: serverlessModel.model
       keyVaultConfig: serverlessModel.keyVaultConfig
+    }
+  }
+]
+
+resource assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = [
+  for roleAssignment in roleAssignments: {
+    name: guid(aiHub.id, roleAssignment.principalId, roleAssignment.roleDefinitionId)
+    scope: aiHub
+    properties: {
+      principalId: roleAssignment.principalId
+      roleDefinitionId: roleAssignment.roleDefinitionId
+      principalType: roleAssignment.principalType
     }
   }
 ]
