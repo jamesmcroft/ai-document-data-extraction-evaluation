@@ -1,5 +1,8 @@
 # Evaluating the quality of AI document data extraction with small and large language models
 
+> [!IMPORTANT]
+> Document processing with Azure AI samples have moved to [Azure-Samples/azure-ai-document-processing-samples](https://github.com/Azure-Samples/azure-ai-document-processing-samples). This repo is archived for reference.
+
 This repository contains the code and data used in the analysis write-up on ["Evaluating the quality of AI document data extraction with small and large language models](https://techcommunity.microsoft.com/t5/azure-for-isv-and-startups/evaluating-the-quality-of-ai-document-data-extraction-with-small/ba-p/4157719) published on the Microsoft Tech Community Blog by the ISV & Digital Native Center of Excellence team.
 
 The repository provides a .NET NUnit test project demonstrates the following techniques for data extraction using small and large language models:
